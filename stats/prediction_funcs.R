@@ -9,6 +9,28 @@ library(caret)
 library(pracma)
 library(reshape2)
 
+NDIGITS = 3
+
+save_fig = function(figname=NULL, width=6.5, height=6.5, res=600, jpg=F){
+  
+  #size in inches
+  if (dev.cur()!=1) dev.off()
+  if (is.null(figname)) {
+    figname = paste0('plot', fig_count)
+    
+    fig_count <<- fig_count+1
+  }
+  
+  print(paste("Generating figure: ", figname))
+  if (jpg){
+    figname = file.path(FIGS_DIR, paste0( figname, '.jpg'))
+    jpeg(figname, width = floor(res/2.54*width), height = floor(res/2.54*height), pointsize=POINTSIZE)
+  } else {
+    figname = file.path(FIGS_DIR, paste0( figname, '.png'))
+    png(figname, width = floor(res/2.54*width), height = floor(res/2.54*height), pointsize=POINTSIZE)
+  }
+  
+}
 
 squareform2 = function (x){
   if (is.vector(x)) {
@@ -39,16 +61,34 @@ squareform2 = function (x){
   return(y)
 }
 
-select_modules = function(modules_file, to_select){
+select_modules = function(modules_file, to_select, invert = F){
   
   modules = unlist(read.table(modules_file))
   #print(modules)
   n.rois = length(modules)
-  adj = matrix(F, n.rois, n.rois)
-  adj[modules == to_select[1], modules == to_select[2]] = T
-      
+  if(invert) {
+    adj = matrix(T, n.rois, n.rois)
+    adj[modules == to_select[1], ] = F
+    adj[, modules == to_select[1]] = F
+    adj[modules == to_select[2], ] = F
+    adj[, modules == to_select[2]] = F
+    
+  } else {
+    adj = matrix(F, n.rois, n.rois)
+    # adj[modules == to_select[1], modules == to_select[2]] = T
+    # adj[modules == to_select[2], modules == to_select[1]] = T
+    # adj[modules == to_select[1], modules == to_select[1]] = T
+    # adj[modules == to_select[2], modules == to_select[2]] = T
+
+    adj[modules == to_select[1], ] = T
+    adj[, modules == to_select[1]] = T
+    adj[modules == to_select[2], ] = T
+    adj[, modules == to_select[2]] = T
+    
+  }  
+  
   valid = which(squareform2(adj))
-  print(paste("Connections between module(s) ", to_select[1], ", " , to_select[2], ": " , length(valid)))
+  print(paste("Connections between module(s) ", to_select[1], ", " , to_select[2], ": " , length(valid), "Inverted: ", invert))
   return(valid)
 }
 
@@ -64,8 +104,8 @@ do_predictions_loop = function(DIR_ICA_ME, # working dir
                          maxcomp = 10, # max components for spls
                          N_FOLDS = 10, # number of xvalidation folds
                          NPROCS = 10, # processors to use
-                         NITER = 50 # spls bagging iteration
-                         )
+                         NITER = 50, # spls bagging iteration
+                         invert = F)
 {
   
   results = list()
@@ -83,7 +123,8 @@ do_predictions_loop = function(DIR_ICA_ME, # working dir
                                   NPROCS,
                                   NITER,
                                   modules_file,
-                                  to_select)
+                                  to_select, 
+                                  invert)
   }
   
   print(mean(results[[i]]$rho))
@@ -100,7 +141,8 @@ do_prediction = function(DIR_ICA_ME, # working dir
                          NPROCS = 10, # processors to use
                          NITER = 50, # spls bagging iteration
                          modules_file = NULL,
-                         to_select = NULL
+                         to_select = NULL, 
+                         invert =  F
 )
 { 
   print(var)
@@ -144,11 +186,12 @@ do_prediction = function(DIR_ICA_ME, # working dir
   # select features for valid modules
   if (!is.null(modules_file)) 
   {
-    valid.cols = select_modules(modules_file, to_select)
+    valid.cols = select_modules(modules_file, to_select, invert)
     features = features[valid.cols]
     results$to_select = to_select
+    results$inverted = invert
     
-    if (length(valid.cols) < 2){
+    if (length(valid.cols) < 5){
       print("Not enough features!")
       results$empty = T
       
@@ -230,6 +273,7 @@ do_prediction = function(DIR_ICA_ME, # working dir
   results$covars.exp = covars.exp
   results$nfeatures = ncol(ica_data)
   results$cor.test = cor.test(results$y.pred.mean, results$y.test.mean, alternative = "greater")
+  results$cor.test.twotailed = cor.test(results$y.pred.mean, results$y.test.mean)
   
   print(results$cor.test)
   return(results)
@@ -239,7 +283,8 @@ do_prediction = function(DIR_ICA_ME, # working dir
 
 do_mediation = function(DIR_ICA_ME, 
                         results, 
-                        NSIMS = 2000
+                        NSIMS = 2000,
+                        write_coefs = F
                         )
 { 
 
@@ -280,12 +325,34 @@ do_mediation = function(DIR_ICA_ME,
   results$mediation.sex.p = mediation.sex$d0.p
   
   #output the model coefficients as well
-  mycoefs.mat = squareform(as.numeric(results$coefs.correct))
-  write.table(mycoefs.mat, file = paste0(var,"_coefs.mat.txt"), col.names = F, row.names = F)
+  if (write_coefs){
+    mycoefs.mat = squareform(as.numeric(results$coefs.correct))
+    write.table(mycoefs.mat, file = paste0(var, "_coefs.mat.txt"), col.names = F, row.names = F)
+  }
 
   results$FIGS_DIR = FIGS_DIR
   results$RESULTS_DIR = RESULTS_DIR
   results$DIR_ICA_ME = DIR_ICA_ME
+  results$model.0.results = round(summary(model.0)$coefficients[c('age.1', 'sex1'), c(1, 3, 4)], digits = NDIGITS)
+  results$model.M.results = round(summary(model.M)$coefficients[c('age.1', 'sex1'), c(1, 3, 4)], digits = NDIGITS)
+  results$model.Y.results = round(summary(model.Y)$coefficients[c('age.1', 'sex1', 'M'), c(1, 3, 4)], digits = NDIGITS)
+  colnames(results$model.0.results) = colnames(results$model.M.results) = colnames(results$model.Y.results) = c("Estimate", "t", "p")
+
+  mediation.age.sum = summary(mediation.age) # ACME d.avg, d0.ci, d0.p /ADE z... / TOTAL tau /prop n.avg
+  mediation.sex.sum = summary(mediation.sex) # ACME d.avg, d0.ci, d0.p /ADE z... / TOTAL tau /prop n.avg
+  
+  results$mediation.age = rbind(unlist(mediation.age.sum[ c('d.avg', 'd.avg.ci', 'd.avg.p')]),
+                                unlist(mediation.age.sum[ c('z.avg', 'z.avg.ci', 'z.avg.p')]),
+                                unlist(mediation.age.sum[ c('tau.coef', 'tau.ci', 'tau.p')]),
+                                unlist(mediation.age.sum[ c('n.avg', 'n.avg.ci', 'n.avg.p')]))
+
+  results$mediation.sex = rbind(unlist(mediation.sex.sum[ c('d.avg', 'd.avg.ci', 'd.avg.p')]),
+                                unlist(mediation.sex.sum[ c('z.avg', 'z.avg.ci', 'z.avg.p')]),
+                                unlist(mediation.sex.sum[ c('tau.coef', 'tau.ci', 'tau.p')]),
+                                unlist(mediation.sex.sum[ c('n.avg', 'n.avg.ci', 'n.avg.p')]))
+  
+  colnames(results$mediation.age) = colnames(results$mediation.sex) = c("Average", "Cil", "Cih", "p")
+  rownames(results$mediation.age) = rownames(results$mediation.sex) = c("ACME", "ADE", "Total", "Proportion")
   
   return(results)
 }
@@ -595,7 +662,6 @@ plot_results_hierarchical = function(results){
   #--------------------------------
   # need some cleaning, perhaps get highest 10% of connections for each net?
   
-  
   coefs.degree = colSums(mycoefs.mat)
   coefs.degree.abs = colSums(abs(mycoefs.mat))
   coefs.degree.pos = colSums(mycoefs.mat * (mycoefs.mat > 0))  
@@ -703,6 +769,169 @@ plot_results_hierarchical = function(results){
   
   
   
+}
+
+addstar = function(x) ifelse(x < alpha, paste0(x, "*"), paste0(x, " "))
+
+make_mediation_table = function(results){
+  # change col labels
+  model.0.results.age = as.data.frame(t(sapply(results, function(x) x$model.0.results['age.1', ]))) %>% mutate(p = addstar(p))
+  model.M.results.age = as.data.frame(t(sapply(results, function(x) x$model.M.results['age.1', ]))) %>% mutate(p = addstar(p))
+  model.Y.results.age = as.data.frame(t(sapply(results, function(x) x$model.Y.results['age.1', ]))) %>% mutate(p = addstar(p))
+  model.0.results.sex = as.data.frame(t(sapply(results, function(x) x$model.0.results['sex1', ]))) %>% mutate(p = addstar(p))
+  model.M.results.sex = as.data.frame(t(sapply(results, function(x) x$model.M.results['sex1', ]))) %>% mutate(p = addstar(p))
+  model.Y.results.sex = as.data.frame(t(sapply(results, function(x) x$model.Y.results['sex1', ]))) %>% mutate(p = addstar(p))
+  
+  model.Y.results.M = as.data.frame(t(sapply(results, function(x) x$model.Y.results['M', ]))) %>% mutate(p = addstar(p))
+  
+  mediation.age.ACME = round(as.data.frame(t(sapply(results, 
+                                                    function(x) x$mediation.age['ACME', ]))), 3) %>% 
+    mutate(p = addstar(p))
+  
+  mediation.age.prop = round(as.data.frame(t(sapply(results, 
+                                                    function(x) x$mediation.age['Proportion', ]))), 3) %>% 
+    mutate(p = addstar(p))
+  
+  mediation.sex.ACME = round(as.data.frame(t(sapply(results, function(x) x$mediation.sex['ACME', ]))) , 3) %>%
+    mutate(p = addstar(p))
+  
+  mediation.sex.prop = round(as.data.frame(t(sapply(results, function(x) x$mediation.sex['Proportion', ]))), 3) %>% 
+    mutate(p = addstar(p))
+  
+  
+  mediation.age.ACME$Proportion = mediation.age.prop$Average
+  mediation.sex.ACME$Proportion = mediation.sex.prop$Average
+  
+  ## model.M, model.0, model.Y
+  dt.Y.M = cbind(module_labels, model.Y.results.M)
+  dt.age = cbind(module_labels, model.M.results.age, model.0.results.age, model.Y.results.age, mediation.age.ACME)
+  dt.sex = cbind(module_labels, model.M.results.sex, model.0.results.sex, model.Y.results.sex, mediation.sex.ACME)
+  
+  kable(dt.age)
+  kable(dt.sex) 
+  kable(dt.Y.M) 
+}
+
+
+plot_combinations = function(myresults, level, module_names, measure){
+
+  print("-------------------")
+  alpha = 0.05
+  
+  rho = data.frame(
+    mean = sapply(myresults, function(x) ifelse(!x$empty, x$cor.test$estimate, NA)), 
+    low = sapply(myresults, function(x) ifelse(!x$empty, x$cor.test.twotailed$conf.int[1], NA)),
+    high = sapply(myresults, function(x) ifelse(!x$empty, x$cor.test.twotailed$conf.int[2], NA)),
+    p = sapply(myresults, function(x) ifelse(!x$empty, x$cor.test$p.value, NA)),
+    nfeatures = sapply(myresults, function(x) ifelse(!x$empty, x$nfeatures, NA)),
+    from = as.factor(sapply(myresults, function(x) x$to_select[1])),
+    to = as.factor(sapply(myresults, function(x) x$to_select[2])),
+    mediation.age.p = sapply(myresults, function(x) x$mediation.age.p),
+    mediation.sex.p = sapply(myresults, function(x) x$mediation.sex.p)
+  )        
+
+  rho$mediation.sig = 'none'
+  rho$mediation.sig[rho$mediation.age.p < alpha] = 'age'
+  rho$mediation.sig[rho$mediation.sex.p < alpha] = 'sex'
+  rho$mediation.sig[rho$mediation.age.p < alpha & rho$mediation.sex.p < alpha] = 'age & sex'
+  
+    
+  # check the prediction is not driven by the number of features
+  print(cor.test(rho$nfeatures, abs(rho$mean)))  
+  print(cor.test(rho$nfeatures, rho$mean))  
+  print(
+    ggplot(rho, aes( x = nfeatures, y = mean, ymin = low, ymax = high )) + 
+      geom_pointrange() + 
+      xlab("Number of features") +
+      ylab("Correlation between observed and predicted") + 
+      theme_classic() 
+  )
+  
+  #rho$mean[rho$p > alpha] = NA
+  #rho$mediation.sig[rho$p > alpha] = NA
+  #rho = subset(rho, p < alpha)
+  rho$width = ifelse(rho$p < alpha, 1, 0.5)
+  rho$size = ifelse(rho$p < alpha, 5, 4)
+  
+  print(
+    ggplot(rho, aes(x = from, y = to, fill = mean)) +
+      #  ggtitle('Correlation between true and predicted') +
+      geom_tile() +
+      labs(title = 'Correlation between true and predicted',
+           x = 'Network',
+           y = 'Network',
+           fill = 'Correlation'
+      ) + 
+      scale_x_discrete(position = "bottom") +
+      scale_y_discrete(position = "right") +
+      scale_fill_gradient2(midpoint = .1, mid ="orange", high = "yellow", low = "red", limits = c(0, 0.3)) +
+      geom_text(aes(x = from, y = to, label = round(mean, 2), size = size), color = 'black', fontface = "bold") +
+      theme(
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.ticks = element_blank(),
+        legend.justification = c(1, 0),
+        legend.position = c(0.5, 0.7),
+        legend.direction = "horizontal")+
+      guides(fill = guide_colorbar(barwidth = 7, barheight = 1, title.position = "top", title.hjust = 0.5) )
+  )
+
+  # plot mediations
+  print(
+    ggplot(rho, aes(x = from, y = to, fill = mediation.sig)) +
+      #  ggtitle('Correlation between true and predicted') +
+      geom_tile() +
+      labs(title = 'Correlation between observed and predicted',
+           x = 'Network',
+           y = 'Network',
+           fill = 'Mediator'
+      ) + 
+      scale_x_discrete(position = "bottom") +
+      scale_y_discrete(position = "right") +
+      geom_text(aes(x = from, y = to, label = round(mean, 2), size = size), color = 'black', fontface = "bold") +
+      theme(
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank(),
+        axis.ticks = element_blank(),
+        legend.justification = c(1, 0),
+        legend.position = c(0.3, 0.7),
+        legend.direction = "vertical")) #+
+#      guides(fill = guide_colorbar(barwidth = 7, barheight = 1, title.position = "top", title.hjust = 0.5) )
+#  )
+  
+  save_fig(figname = 'Accuracy', res = BWRES)
+  rho.diag = subset(rho, from == to)
+  rho.diag$network = as.factor(module_names[rho.diag$from])  
+  rho.diag$sig = ifelse(rho.diag$p < alpha, "*",  "")
+
+  print(rho.diag)
+  print(
+    ggplot(rho.diag, aes(network, mean, label = rho.diag$sig)) +
+      ggtitle(paste('Correlation between observed and predicted', measure, "\n")) + xlab('Network') + 
+      geom_text(size = CEX_TEXT) +
+      geom_hline(yintercept = level, lty = 2, size = CEX_LINE) + 
+      geom_col(col = 'black', fill = 'gray', alpha = 0.5) + ylim(0, 0.3) + 
+      theme_bw() + 
+      xlab('\nModule') + 
+      ylab('r') +
+      
+      theme(
+        axis.text = element_text(size = CEX_AXIS, margin = margin(t = 100, r = 0, b = 100, l = 0)),
+        axis.title = element_text(size = CEX_AXIS, margin = margin(t = 100, r = 0, b = 100, l = 0)),
+        plot.title = element_text(hjust = 0.5, size = CEX_TITLE),
+        plot.margin = margin(2, 0, 2, 0, "cm"),
+        axis.line = element_line(size = 2)
+        )
+  ) 
+  dev.off()
+  
+  return(rho)
 }
 
 

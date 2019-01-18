@@ -8,8 +8,9 @@ MINMODSIZE = 0; % min size acceptable for a modules (smaller modules will be rem
 REPS = 2000; % repetitions of modularity algorithm
 REPSCONS = 2000; % repetitions of 
 TAU = 0.2; % min strength for consensus matrix
-TRYGAMMAS = 1; % 1 = try different gamma values to find the best partition
+TRYGAMMAS = 0; % 1 = try different gamma values to find the best partition
 THR = 5; % thershold for ICA maps (don't show voxels with value below this)
+gamma = 1.3; % fixed gamma value
 
 %% define paths
 
@@ -123,7 +124,6 @@ if TRYGAMMAS
 else
     
     % fix value for gamma and compute modularity
-    gamma = 2.5;
     for j = 1 : REPS
         [M Q] = community_louvain(adj, gamma);
         
@@ -171,5 +171,5 @@ end
 
 mri.vol = module_parc;
 
-MRIwrite(mri, 'modules.nii.gz')
-dlmwrite('modules.txt', partition)
+%MRIwrite(mri, 'modules_1.3.nii.gz')
+%dlmwrite('modules_1.3.txt', partition)

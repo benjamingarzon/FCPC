@@ -20,29 +20,12 @@ cd(workdir)
 group_maps=fullfile(workdir, 'groupmelodic.ica/melodic_IC');
 ts_dir=fullfile(workdir, 'grot');
 
-
 %% load data
 ts=nets_load(ts_dir,TR,1);
 bad_nets = load(bad_nets_file)';
 ts.DD=setdiff([1:ncomp], bad_nets + 1);
 
 ts=nets_tsclean(ts,1);
-
-%% compute adjacencies and save
-
-%
-% netmats1 = nets_netmats(ts,1,'corr');       % full correlation (normalised covariances)
-% netmats5 = nets_netmats(ts,1,'ridgep');     % Ridge Regression partial, with rho=0.01
-%
-% [Znet1,Mnet1]=nets_groupmean(netmats1,0); % full corr
-% [Znet5,Mnet5]=nets_groupmean(netmats5,0); % ridge
-%
-% subjects = load(fullfile(workdir, 'subjects.txt'));
-% netmats1_table = reshape_nets(netmats1, subjects);
-% dlmwrite(fullfile(workdir, 'netmats_full.csv'), netmats1_table);
-% netmats5_table = reshape_nets(netmats5, subjects);
-% dlmwrite(fullfile(workdir, 'netmats_ridge.csv'), netmats5_table);
-%
 
 %% represent coefs
 

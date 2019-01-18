@@ -1,0 +1,83 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Plot results
+add full model
+```{r}
+rm(list=ls())
+library(knitr)
+library(xtable)
+library(dplyr)
+setwd("~/Software/FCPC/stats")
+source("~/Software/FCPC/stats/prediction_funcs.R")
+BWRES=1000
+POINTSIZE=35
+CEX_AXIS = 70
+CEX_TITLE = 90
+CEX_LINE = 3
+CEX_TEXT = 50
+
+OUTPUT_DIR = "~/Data/NSPN/module_stats/"
+
+module_labels = c("SMT", #somatosensory + motor",
+                  "VPFC", # ventral frontal
+                  "BGSAL", # basal ganglia + salience
+                  "DLPFC", # dorsolateral prefrontal
+                  "DMPFC", # dorsomedial prefrontal
+                  "VIS",  # dorsomedial visual
+                  "DMN")  # default mode
+
+alpha = 0.05
+
+```
+
+
+
+Decision acuity
+
+```{r}
+
+RESULTS_DIR = file.path(OUTPUT_DIR, "mediation_data_2k_7mods_single_decAc")
+RESULTS_FILE = file.path(RESULTS_DIR, "data.RData")
+load(RESULTS_FILE)
+#source("~/Software/FCPC/stats/prediction_funcs.R")
+FIGS_DIR = RESULTS_DIR
+plot_combinations(results, var.prediction.results$cor.test$estimate, module_labels, "decision acuity")
+
+make_mediation_table(var.mediation.network.results)
+
+```
+
+
+IQmatrix
+
+```{r}
+
+RESULTS_DIR = file.path(OUTPUT_DIR, "mediation_data_2k_7mods_single_IQmatrix")
+RESULTS_FILE = file.path(RESULTS_DIR, "data.RData")
+load(RESULTS_FILE)
+#source("~/Software/FCPC/stats/prediction_funcs.R")
+FIGS_DIR = RESULTS_DIR
+plot_combinations(results, var.prediction.results$cor.test$estimate, module_labels, "decision acuity")
+
+make_mediation_table(var.mediation.network.results)
+
+```
+
+IQvocab
+
+```{r}
+
+RESULTS_DIR = file.path(OUTPUT_DIR, "mediation_data_2k_7mods_single_IQvocab")
+RESULTS_FILE = file.path(RESULTS_DIR, "data.RData")
+load(RESULTS_FILE)
+#source("~/Software/FCPC/stats/prediction_funcs.R")
+FIGS_DIR = RESULTS_DIR
+plot_combinations(results, var.prediction.results$cor.test$estimate, module_labels, "decision acuity")
+
+make_mediation_table(var.mediation.network.results)
+
+```
+
