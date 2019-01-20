@@ -31,8 +31,12 @@ ts=nets_tsclean(ts,1);
 
 coefs = load('results/decAc_coefs.mat.txt');
 showN = sum(coefs(:)~=0)/2;
-[netmat] = nets_edgepics(ts, group_maps, abs(coefs), coefs, showN);
-saveas(gcf, 'results/decAc_connections.png')
+[netmat] = nets_edgepics(ts, group_maps, abs(coefs), coefs, showN);fig = gcf;
+
+%%
+set(gcf, 'Position',  [100, 100, 2000, 1600])
+print('results/decAc_connections','-dpng','-r500')
+%saveas(gcf, 'results/decAc_connections.png')
 
 %coefs_full = zeros(ncomp,ncomp);
 %coefs_full(ts.DD, ts.DD) = coefs;

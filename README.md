@@ -16,9 +16,14 @@ stats/prediction_funcs.R: functions for prediction of cognitive scores (do_media
 
 stats/aux_pls.R: wrappers for PLS functions
 
-stats/slices_summary_2: allows to overlay atlas on ICA group maps for better identification of edges. Requires overlay.py
+stats/slices_summary_2: allows to overlay atlas on ICA group maps for better identification of edges. Requires overlay.py and needs to be run before plot_weights
 
 stats/plot_weights.m: plot pairs of ROIs with highest weights
 
 stats/plot_results.Rmd: plot accuracy and create mediation matrices
 
+mri_vol2vol --mov ../../ICA_ME/nspn_ME/ica200.gica/modules_1.3_smooth.nii.gz --targ /usr/local/fsl/data/standard/MNI152_T1_1mm_brain.nii.gz --regheader --o modules.nii.gz
+#slices_summary modules.nii.gz 0.01 /usr/local/fsl/data/standard/MNI152_T1_1mm_brain.nii.gz modules.sum
+
+~/Software/FCPC/stats/slices_summary_2 modules.nii.gz 0.01 /usr/local/fsl/data/standard/MNI152_T1_2mm_brain.nii.gz modules.sum 1
+# run slices dir for small ones with more contrast

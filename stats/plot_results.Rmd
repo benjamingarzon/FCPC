@@ -44,7 +44,7 @@ RESULTS_FILE = file.path(RESULTS_DIR, "data.RData")
 load(RESULTS_FILE)
 #source("~/Software/FCPC/stats/prediction_funcs.R")
 FIGS_DIR = RESULTS_DIR
-plot_combinations(results, var.prediction.results$cor.test$estimate, module_labels, "decision acuity")
+plot_combinations(var.mediation.network.results, var.prediction.results$cor.test$estimate, module_labels, "decision acuity")
 
 make_mediation_table(var.mediation.network.results)
 

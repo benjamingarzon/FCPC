@@ -12,7 +12,7 @@ outpng = sys.argv[4]
 lthresh = float(sys.argv[5])
 atlas = sys.argv[6]
 annotate = sys.argv[7]
-
+alpha = 0.9
 #bgrange = sys.argv[2]
 #ulthresh = sys.argv[5]
 img = image.load_img(img)
@@ -31,19 +31,27 @@ if atlas == '0':
         black_bg=True, 
         display_mode='z', cut_coords = (z, ), # display_mode="z", cut_coords = 3, 
         annotate=annotate == '1', 
-        view_type='filled_contours', draw_cross = False, alpha = 0.4)
-    display.add_overlay(img, threshold = lthresh, alpha = 0.9)
+        view_type='filled_contours', draw_cross = False, alpha = 0.5)
+    display.add_overlay(img, threshold = lthresh, alpha = alpha)
 
 
 else:
-    display = plotting.plot_stat_map(img, 
-        bg_img=bg_img, 
-        colorbar=False, 
-        black_bg=True, 
-        display_mode='z', cut_coords = (z, ),
-        annotate= annotate == '1', draw_cross = False,  threshold = lthresh)
-    display.add_contours(atlas, levels=[.5], colors='b', alpha = 0.5, 
-        filled = True)
+    if atlas == '1':	
+        display = plotting.plot_anat(bg_img, 
+	    black_bg=True, 
+	    display_mode='z', cut_coords = (z, ),
+	    annotate= annotate == '1', draw_cross = False)
+        display.add_overlay(img, threshold = lthresh, alpha = alpha, cmap = 'hot')
+
+    else:
+        display = plotting.plot_stat_map(img, 
+	    bg_img=bg_img, 
+	    colorbar=False, 
+	    black_bg=True, 
+	    display_mode='z', cut_coords = (z, ),
+	    annotate= annotate == '1', draw_cross = False,  threshold = lthresh)
+        display.add_contours(atlas, levels=[.5], colors='b', alpha = alpha, 
+	    filled = True)
 #    display.add_edges(atlas)
 #    display.add_overlay(atlas)
 #    display.add_overlay(img)
