@@ -25,5 +25,5 @@ stats/plot_results.Rmd: plot accuracy and create mediation matrices
 mri_vol2vol --mov ../../ICA_ME/nspn_ME/ica200.gica/modules_1.3_smooth.nii.gz --targ /usr/local/fsl/data/standard/MNI152_T1_1mm_brain.nii.gz --regheader --o modules.nii.gz
 #slices_summary modules.nii.gz 0.01 /usr/local/fsl/data/standard/MNI152_T1_1mm_brain.nii.gz modules.sum
 
-~/Software/FCPC/stats/slices_summary_2 modules.nii.gz 0.01 /usr/local/fsl/data/standard/MNI152_T1_2mm_brain.nii.gz modules.sum 1
+~/Software/FCPC/stats/slices_summary_2 modules.nii.gz 0.01 /usr/local/fsl/data/standard/MNI152_T1_1mm_brain.nii.gz modules.sum 1 0.5 -all
 # run slices dir for small ones with more contrast

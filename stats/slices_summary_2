@@ -73,6 +73,8 @@
 #mri_vol2vol --targ /usr/local/fsl/data/standard/MNI152_T1_2mm.nii.gz --mov melodic_IC.nii.gz --regheader --o melodic_IC_HR.nii.gz
 #~/Software/FCPC/stats/slices_summary_2  melodic_IC_HR.nii.gz 4 /usr/local/fsl/data/standard/MNI152_T1_2mm_brain.nii.gz melodic_IC_MD.sum /home/benjamin.garzon/Data/NSPN/templates/MD.nii.gz &
 #~/Software/FCPC/stats/slices_summary_2  melodic_IC_HR.nii.gz 4 /usr/local/fsl/data/standard/MNI152_T1_2mm_brain.nii.gz melodic_IC_HR.sum /home/benjamin.garzon/Data/NSPN/templates/empty.nii.gz
+
+slices="40 55 70 85 100 115 130 145"
 export LC_ALL=C
 
 
@@ -128,9 +130,16 @@ if [ `${FSLDIR}/bin/imtest $1` = 1 ] ; then
   shift 5
 
   allthree=1
+  all=0
   if [ _$1 = _-1 ] ; then
     echo "Generating single-slice summary images instead of 3-slice"
     allthree=0
+    shift
+  fi
+
+  if [ _$1 = _-all ] ; then
+    echo "Generating multiple slice summary"
+    all=1
     shift
   fi
 
@@ -177,37 +186,56 @@ if [ `${FSLDIR}/bin/imtest $1` = 1 ] ; then
       ${FSLDIR}/bin/fslmaths grot -sqrt -recip -mul $g -Xmean -Ymean grot -odt float
       echo "$g `${FSLDIR}/bin/fslstats grot -m`" >> grot.txt
     done
+    
+    if [ $all = 1 ]; then 
+	    outfile=`zeropad $DD 4`.png
+	    rm $outfile
+	    for slice in $slices; do
+	      echo "Generating multiple slices summary, volume $grot slice $slice"
+	      ~/Software/FCPC/stats/overlay.py BG.nii.gz ${grot}.nii.gz $slice grot_slice $lthresh $atlas 0 0.6
+	      if [ -e $outfile ]; then 
+		 pngappend $outfile - grot_slice.png $outfile
+	      else 
+                 mv grot_slice.png $outfile
+	      fi
+	    done
 
-    best=`cat grot.txt | sort -k 2 -n | tail -n 1 | awk '{print $1}'`
-    nbest=`${FSLDIR}/bin/remove_ext $best | awk -F _ '{print $2}'`
-    #${FSLDIR}/bin/fslroi BG grot 0 $bgdimx 0 $bgdimy $nbest 1
-    #${FSLDIR}/bin/overlay 0 0 grot $bgrange $best $lthresh $uthresh grotB
-    ~/Software/FCPC/stats/overlay.py BG.nii.gz ${grot}.nii.gz $nbest grotB $lthresh $atlas 0
-    fslecho "$nbest\c"
-    if [ $allthree = 1 ] ; then
-      lbest=`echo "$nbest 4 - p" | dc -`
-      if [ $lbest -lt 1 ] ; then lbest=1; fi;
-      lbest=`cat grot.txt | head -n $lbest | sort -k 2 -n | tail -n 1 | awk '{print $1}'`
-      nlbest=`${FSLDIR}/bin/remove_ext $lbest | awk -F _ '{print $2}'`
-      ${FSLDIR}/bin/fslroi BG grot 0 $bgdimx 0 $bgdimy $nlbest 1
-      #${FSLDIR}/bin/overlay 0 0 grot $bgrange $lbest $lthresh $uthresh grotC
-      ~/Software/FCPC/stats/overlay.py BG.nii.gz ${grot}.nii.gz $nlbest grotC $lthresh $atlas 0
+    else
+	    best=`cat grot.txt | sort -k 2 -n | tail -n 1 | awk '{print $1}'`
+	    nbest=`${FSLDIR}/bin/remove_ext $best | awk -F _ '{print $2}'`
+	    #${FSLDIR}/bin/fslroi BG grot 0 $bgdimx 0 $bgdimy $nbest 1
+	    #${FSLDIR}/bin/overlay 0 0 grot $bgrange $best $lthresh $uthresh grotB
+	    ~/Software/FCPC/stats/overlay.py BG.nii.gz ${grot}.nii.gz $nbest grotB $lthresh $atlas 0 0.6
+	    fslecho "$nbest\c"
+	    if [ $allthree = 1 ] ; then
+	      lbest=`echo "$nbest 4 - p" | dc -`
+	      if [ $lbest -lt 1 ] ; then lbest=1; fi;
+	      lbest=`cat grot.txt | head -n $lbest | sort -k 2 -n | tail -n 1 | awk '{print $1}'`
+	      nlbest=`${FSLDIR}/bin/remove_ext $lbest | awk -F _ '{print $2}'`
+	      ${FSLDIR}/bin/fslroi BG grot 0 $bgdimx 0 $bgdimy $nlbest 1
+	      #${FSLDIR}/bin/overlay 0 0 grot $bgrange $lbest $lthresh $uthresh grotC
+	      ~/Software/FCPC/stats/overlay.py BG.nii.gz ${grot}.nii.gz $nlbest grotC $lthresh $atlas 0 0.6
 
-      ubest=`echo "$nbest 6 + p" | dc -`
-      if [ $ubest -gt `cat grot.txt | wc -l` ] ; then ubest=`cat grot.txt | wc -l`; fi;
-      ubest=`cat grot.txt | tail -n +$ubest | sort -k 2 -n | tail -n 1 | awk '{print $1}'`
-      nubest=`${FSLDIR}/bin/remove_ext $ubest | awk -F _ '{print $2}'`
-      ${FSLDIR}/bin/fslroi BG grot 0 $bgdimx 0 $bgdimy $nubest 1
-      #${FSLDIR}/bin/overlay 0 0 grot $bgrange $ubest $lthresh $uthresh grotA
-      ~/Software/FCPC/stats/overlay.py BG.nii.gz ${grot}.nii.gz $nubest grotA $lthresh $atlas 0
+	      ubest=`echo "$nbest 6 + p" | dc -`
+	      if [ $ubest -gt `cat grot.txt | wc -l` ] ; then ubest=`cat grot.txt | wc -l`; fi;
+	      ubest=`cat grot.txt | tail -n +$ubest | sort -k 2 -n | tail -n 1 | awk '{print $1}'`
+	      nubest=`${FSLDIR}/bin/remove_ext $ubest | awk -F _ '{print $2}'`
+	      ${FSLDIR}/bin/fslroi BG grot 0 $bgdimx 0 $bgdimy $nubest 1
+	      #${FSLDIR}/bin/overlay 0 0 grot $bgrange $ubest $lthresh $uthresh grotA
+	      ~/Software/FCPC/stats/overlay.py BG.nii.gz ${grot}.nii.gz $nubest grotA $lthresh $atlas 0 0.6
 
-      fslecho  ",$nlbest,$nubest\c"
-      #fslmerge -y grotB grotA grotB grotC
+	      fslecho  ",$nlbest,$nubest\c"
+	      #fslmerge -y grotB grotA grotB grotC
+
+
+	    fi
+	    fslecho  "] \c"
+
+	    #${FSLDIR}/bin/slicer grotB -u -z 0 `zeropad $DD 4`.png
+	    pngappend grotA.png - grotB.png - grotC.png `zeropad $DD 4`.png
+
     fi
-    fslecho  "] \c"
 
-    #${FSLDIR}/bin/slicer grotB -u -z 0 `zeropad $DD 4`.png
-    pngappend grotA.png - grotB.png - grotC.png `zeropad $DD 4`.png
   done
   /bin/rm -f grot* vol* BG*
   echo ""

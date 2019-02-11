@@ -10,8 +10,11 @@ addpath ~/Software/BCT
 addpath /usr/local/freesurfer/matlab/
 addpath /usr/local/freesurfer/fsfast/toolbox/
 addpath /home/benjamin.garzon/Software/FSLnets_pack/FSLNets/
-addpath /home/benjamin.garzon/Software/FSLnets_pack/NSPN/
+
 workdir = '/home/benjamin.garzon/Data/NSPN/ICA_ME/nspn_ME/ica200.gica';
+coefs_dir = '/home/benjamin.garzon/Data/NSPN/module_stats/mediation_data_2k_7mods_100_decAc/';
+coefs_file = fullfile(coefs_dir, 'decAc_coefs_mat.txt');
+
 %atlas = '/home/benjamin.garzon/Data/NSPN/templates/MD.nii.gz';
 bad_nets_file = 'bad_nets200.txt'
 ncomp = 200;
@@ -28,14 +31,18 @@ ts.DD=setdiff([1:ncomp], bad_nets + 1);
 ts=nets_tsclean(ts,1);
 
 %% represent coefs
-
-coefs = load('results/decAc_coefs.mat.txt');
+coefs = load(coefs_file);
 showN = sum(coefs(:)~=0)/2;
+showN = 9;
 [netmat] = nets_edgepics(ts, group_maps, abs(coefs), coefs, showN);fig = gcf;
 
 %%
 set(gcf, 'Position',  [100, 100, 2000, 1600])
-print('results/decAc_connections','-dpng','-r500')
+set(gcf, 'Position',  [100, 100, 1000, 1300])
+print(fullfile(coefs_dir, 'decAc_connections'),'-dpng','-r500')
+
+figure
+hist(coefs(tril(coefs)~=0), 100)
 %saveas(gcf, 'results/decAc_connections.png')
 
 %coefs_full = zeros(ncomp,ncomp);

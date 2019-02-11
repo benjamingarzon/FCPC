@@ -11,7 +11,7 @@ width_h = 7007 # 17.8cm x 1000 dpi
 width0 = 3070
 
 normalfont = ImageFont.truetype("/usr/share/fonts/liberation/LiberationSerif-Bold.ttf", size = 20)
-smallfont = ImageFont.truetype("/usr/share/fonts/liberation/LiberationSerif-Bold.ttf", size = 150)
+smallfont = ImageFont.truetype("/usr/share/fonts/liberation/LiberationSerif-Bold.ttf", size = 30)
 
 letters = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T"]
 def combine_figs(fig_list, nrows, ncols, outputname, width = 0, letters = letters, with_letter = True, letter_color = ['black' for l in letters], fig_order = "col", letter_pos = (20, 10), font = normalfont):
@@ -70,7 +70,9 @@ suppname = ['/home/benjamin.garzon/Data/NSPN/module_stats/FigureS%d%s'%(x+1, ext
 
 # decision acuity accuracy
 fig_list_1 = [
-  '/home/benjamin.garzon/Data/NSPN/module_stats/mediation_data_2k_7mods_decAc/Accuracy.png'
+  '/home/benjamin.garzon/Data/NSPN/module_stats/mediation_data_2k_7mods_100_decAc/Accuracy.png',
+  '/home/benjamin.garzon/Data/NSPN/module_stats/mediation_data_2k_7mods_100_IQmatrix/Accuracy.png',
+  '/home/benjamin.garzon/Data/NSPN/module_stats/mediation_data_2k_7mods_100_IQvocab/Accuracy.png' 
 ]
 
 # modules
@@ -78,29 +80,42 @@ fig_list_2 = ['/home/benjamin.garzon/Data/NSPN/module_stats/modules/modules.sum/
 
 # connections
 fig_list_3 = [
-  '/home/benjamin.garzon/Data/NSPN/ICA_ME/nspn_ME/ica200.gica/results/decAc_connections.png'
+  '/home/benjamin.garzon/Data/NSPN/module_stats/mediation_data_2k_7mods_100_decAc/decAc_connections.png'
 ]
 
-fig_list_S1 = [
-  '/home/benjamin.garzon/Data/NSPN/module_stats/mediation_data_2k_7mods_IQmatrix/Accuracy.png',
-  '/home/benjamin.garzon/Data/NSPN/module_stats/mediation_data_2k_7mods_IQvocab/Accuracy.png'
-
+# degree
+fig_list_4 = [
+  '/home/benjamin.garzon/Data/NSPN/module_stats/mediation_data_2k_7mods_100_decAc/decAc_regions.pos.png',
+  '/home/benjamin.garzon/Data/NSPN/module_stats/mediation_data_2k_7mods_100_decAc/decAc_regions.neg.png',
+  '/home/benjamin.garzon/Data/NSPN/module_stats/mediation_data_2k_7mods_100_IQmatrix/IQmatrix_regions.pos.png',
+  '/home/benjamin.garzon/Data/NSPN/module_stats/mediation_data_2k_7mods_100_IQmatrix/IQmatrix_regions.neg.png',
+  '/home/benjamin.garzon/Data/NSPN/module_stats/mediation_data_2k_7mods_100_IQvocab/IQvocab_regions.pos.png',
+  '/home/benjamin.garzon/Data/NSPN/module_stats/mediation_data_2k_7mods_100_IQvocab/IQvocab_regions.neg.png'
 ]
 
-modules = [" SMT ", "VPFC", "BGSAL", "DLPFC", "DMPFC", " VIS ", " DMN "]
+#fig_list_S1 = [
+#  '/home/benjamin.garzon/Data/NSPN/module_stats/mediation_data_2k_7mods_IQmatrix/Accuracy.png',
+#  '/home/benjamin.garzon/Data/NSPN/module_stats/mediation_data_2k_7mods_IQvocab/Accuracy.png'
+#]
 
-module_ordering = [2,3,6,4,0,5,1]
+modules = [" SMT ", "IMOFC", "BGTMP", "DLPFC", "DMPFC", " VIS ", " PDMN"]
+
+module_ordering = [2,3,4,1,6,0,5]
 modules = [modules[i] for i in module_ordering]
 fig_list_2 = [fig_list_2[i] for i in module_ordering]
 
 #  
-combine_figs(fig_list_1, 1, 1, outputname[0], with_letter = False, width = width)
+combine_figs(fig_list_1, 1, 3, outputname[0], with_letter = False, width = width)
 
 combine_figs(fig_list_2, 1, 7, 
 outputname[1], width = width_h, letters = modules, 
-letter_color = ['white' for l in modules], letter_pos = (85, 660), font = smallfont)
+letter_color = ['white' for l in modules], letter_pos = (75, 1800), font = smallfont)
 
 combine_figs(fig_list_3, 1, 1, outputname[2], with_letter = False, width = width_h)
 
-combine_figs(fig_list_S1, 1, 2, suppname[0], width = width_h)
+combine_figs(fig_list_4, 1, 6, 
+outputname[3], width = width_h, 
+letter_color = 6*['white'], font = smallfont)
+
+#combine_figs(fig_list_S1, 1, 2, suppname[0], width = width_h)
 

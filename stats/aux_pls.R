@@ -319,9 +319,10 @@ do_crossvalidate_spls = function(fold, input, maxcomp, NITER = 100, steps = seq(
     y.train.pred = rowMeans(y.train.pred.iter)
     
   } else {
-    cv <- cv.spls( X.train, y.train, eta = steps, K = c(1:min(maxcomp, ncol(X.train))), plot.it = F)
-    mypls <- spls( X.train, y.train, eta = cv$eta.opt, K = cv$K.opt  )
-    coefs = coefs.iter = t(coef.spls(mypls))
+    # only one iteration, no resampling
+    cv <- cv.spls( X.train, y.train, eta = steps, K = c(1:min(maxcomp, ncol(X.train))), plot.it = F, scale.x = F )
+    mypls <- spls( X.train, y.train, eta = cv$eta.opt, K = cv$K.opt, scale.x = F  )
+    coefs = coefs.iter = coef.spls(mypls)
     y.pred = predict(mypls, X.test)
     y.train.pred = predict(mypls, X.train)
   }

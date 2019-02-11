@@ -12,7 +12,8 @@ outpng = sys.argv[4]
 lthresh = float(sys.argv[5])
 atlas = sys.argv[6]
 annotate = sys.argv[7]
-alpha = 0.9
+alpha = sys.argv[8]
+alpha = 0.9 if alpha == '' else float(alpha)
 #bgrange = sys.argv[2]
 #ulthresh = sys.argv[5]
 img = image.load_img(img)
