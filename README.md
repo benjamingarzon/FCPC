@@ -1,6 +1,16 @@
 #Functional connectome prediction of cognition (FCPC)
 
-Files:
+Scripts for connectivity analysis for "A generic decision-making ability predicts psychopathology in adolescents and young adults and is reflected in brain connectivity patterns that are distinct from general intelligence" (Michael Moutoussis and Benjamín Garzón, Sharon Neufeld, Dominik R. Bach, Francesco Rigoli, NSPN Consortium, Marc Guitart-Masip and Raymond J. Dolan)
+
+
+## Data processing
+Resting-state data were initially processed with MEICA (https://afni.nimh.nih.gov/pub/dist/doc/program_help/meica.py.html), Melodic (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/MELODIC), and FSLnets (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSLNets).
+
+process/connectivity/run_meica.sh: run meica analysis on all subjects
+
+process/connectivity/run_melodic.sh: run Melodic
+
+process/connectivity/run_melodicpost.sh: runs Melodic and dual regression
 
 process/compute_modules.m: compute community detection based on connectivity matrices
 
@@ -8,7 +18,9 @@ process/organize_data.R: merges data from different files into one matrix
 
 process/name_ROIS.sh: name the ROIs (maps) from the ICA analysis based on HarvardOxford atlas
 
-stats/mediation_report.R: create a report from output of mediation.R
+
+## Statistical analyses
+stats/run_analyses.R: main analysis script
 
 stats/mediation.R: calls do_mediation and do_prediction
 
@@ -16,14 +28,4 @@ stats/prediction_funcs.R: functions for prediction of cognitive scores (do_media
 
 stats/aux_pls.R: wrappers for PLS functions
 
-stats/slices_summary_2: allows to overlay atlas on ICA group maps for better identification of edges. Requires overlay.py and needs to be run before plot_weights
-
-stats/plot_weights.m: plot pairs of ROIs with highest weights
-
 stats/plot_results.Rmd: plot accuracy and create mediation matrices
-
-mri_vol2vol --mov ../../ICA_ME/nspn_ME/ica200.gica/modules_1.3_smooth.nii.gz --targ /usr/local/fsl/data/standard/MNI152_T1_1mm_brain.nii.gz --regheader --o modules.nii.gz
-#slices_summary modules.nii.gz 0.01 /usr/local/fsl/data/standard/MNI152_T1_1mm_brain.nii.gz modules.sum
-
-~/Software/FCPC/stats/slices_summary_2 modules.nii.gz 0.01 /usr/local/fsl/data/standard/MNI152_T1_1mm_brain.nii.gz modules.sum 1 0.5 -all
-# run slices dir for small ones with more contrast

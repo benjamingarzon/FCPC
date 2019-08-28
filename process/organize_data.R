@@ -1,5 +1,5 @@
 # ------------------------------------------
-# MERGE DATA NICELY AND GET PARAMETERS FOR BEHAVIOUR
+# MERGE DATA NICELY AND GET BEHAVIOURAL PARAMETERS
 # ------------------------------------------
 
 # patch some files together...
@@ -27,7 +27,7 @@ demo.5 = read.table(DEMO_FILE.5, header=TRUE, sep=',') %>% mutate(Subject = id_n
 demo.5 = demo.5[c("Subject", wasi_scores)]
 
 # join and reconcile conflicts
-demo.3 = subset(demo.3, !Subject %in% c(19935, 27813, 35501))# these seem incorrect in the first file
+demo.3 = subset(demo.3, !Subject %in% c(19935, 27813, 35501)) # these seem incorrect in the first file
 demo.IQ = rbind(demo.3, demo.4, demo.5)
 demo.IQ = distinct(demo.IQ[ !is.na(rowSums(demo.IQ[wasi_scores])), ])
 
@@ -39,7 +39,9 @@ demo.pars.NSPN = merge(demo.pars.NSPN %>% dplyr::select(-one_of(wasi_scores)) , 
 demo.pars.NSPN = demo.pars.NSPN %>% mutate(IQ = wasi_zz_iq_full2_iq,
                                            IQvocab = wasi_za_vocab_raw_score,
                                            IQmatrix = wasi_zl_matrix_raw_score,
-                                           age = age_scan1)
+                                           age = age_scan1) 
+
+demo.pars.NSPN$IQcomp = 0.5*(scale(demo.pars.NSPN$IQvocab) + scale(demo.pars.NSPN$IQmatrix))
 
 # transform factors to dummy
 demo.pars.NSPN$sex.num = 1 * (demo.pars.NSPN$sex == 'Male')
@@ -54,9 +56,15 @@ PARAMS_DEMO_FILE_NSPN = '~/Data/gng_modelling/NSPN/params_NSPN.csv'
 write.table(demo.pars.NSPN, PARAMS_DEMO_FILE_NSPN, sep = ';')
 
 # take only 2k cohort
-demo.pars.2k = subset(demo.pars.NSPN, cohort = '2k_Cohort')
+demo.pars.2k = subset(demo.pars.NSPN, cohort == '2K_Cohort')
 PARAMS_DEMO_FILE_NSPN = '~/Data/gng_modelling/NSPN/params_NSPN_2k.csv'
 write.table(demo.pars.2k, PARAMS_DEMO_FILE_NSPN, sep = ';')
+
+# non-depressed
+demo.pars.nondep = demo.pars.2k[-grep("epression", demo.pars.2k$medical_specify), ]
+PARAMS_DEMO_FILE_NSPN = '~/Data/gng_modelling/NSPN/params_NSPN_nondep.csv'
+write.table(demo.pars.nondep, PARAMS_DEMO_FILE_NSPN, sep = ';')
+
 
 # those with imaging
 sum(complete.cases(demo.pars.NSPN[c('Subject','age','sex','decAc')]))

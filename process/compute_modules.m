@@ -1,6 +1,7 @@
+%% compute modularity and graph metrics that can be used for predictive modelling
+
 clear all
 close all
-%% compute modularity and graph metrics that can be used for predictive modelling
 
 %% define parameters
 N_gammas =  30; % number of gamma values to try
@@ -21,8 +22,7 @@ addpath /usr/local/freesurfer/fsfast/toolbox/
 addpath /home/benjamin.garzon/Software/FSLnets_pack/FSLNets/
 addpath /home/benjamin.garzon/Software/FSLnets_pack/NSPN/
 workdir = '/home/benjamin.garzon/Data/NSPN/ICA_ME/nspn_ME/ica200.gica';
-%workdir = '/home/ALDRECENTRUM/benjamin.garzon/Data/NSPN/ICA_ME/nspn_ME_fu/ica200.gica';
-%atlas = '/home/benjamin.garzon/Data/NSPN/templates/MD.nii.gz';
+
 bad_nets_file = 'bad_nets200.txt'
 ncomp = 200;
 
