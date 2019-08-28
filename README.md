@@ -1,4 +1,3 @@
-# Functional connectome prediction of cognition (FCPC)
 
 Scripts for connectivity analysis for "A generic decision-making ability predicts psychopathology in adolescents and young adults and is reflected in brain connectivity patterns that are distinct from general intelligence" (Michael Moutoussis and Benjamín Garzón, Sharon Neufeld, Dominik R. Bach, Francesco Rigoli, NSPN Consortium, Marc Guitart-Masip and Raymond J. Dolan)
 
