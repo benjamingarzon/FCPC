@@ -20,107 +20,344 @@ CEX_TITLE = 90
 CEX_LINE = 3
 CEX_TEXT = 50
 
-OUTPUT_DIR = "~/Data/NSPN/module_stats/"
+OUTPUT_DIR = "~/Data/NSPN/results/"
 
-module_labels_ = c("SMT", #somatosensory + motor",
-                   "IMOFC", # ventral frontal
-                   "BGTMP", # basal ganglia + salience
-                   "DLPFC", # dorsolateral prefrontal
-                   "DMPFC", # dorsomedial prefrontal
-                   "VIS",  # dorsomedial visual
-                   "PDMN")  # default mode
+#module_labels_ = read.table('~/Data/NSPN/templates/module_table.csv')$Name
+#all_module_labels_ = c(module_labels_, "All")
+#fdr_correct_ = seq(length(all_module_labels_)) # choose between correcting all or only some
 
-all_module_labels_ = c(module_labels_, "All")
 alpha = 0.05
-fdr_correct_ = seq(length(all_module_labels_)) # choose between correcting all or only some
+
+FIGS_DIR = OUTPUT_DIR
+
 ```
+
+Motion parameters
+
+```{r}
+
+
+motion_parameters = function(DIR_ICA_ME){
+  print(DIR_ICA_ME)
+  FILE_DOF = file.path(DIR_ICA_ME, 'meica_DOF_nom.txt')
+  FILE_FD = file.path(DIR_ICA_ME, 'fd.txt')
+  FILE_DVARS = file.path(DIR_ICA_ME, 'dvars.txt')
+  FILE_SUBJECTS = file.path(DIR_ICA_ME, 'subjects.txt')
+  meica_dof = read.table(FILE_DOF)
+  fd = read.table(FILE_FD)
+  fd.max = cbind(fd[1], apply(fd[-c(1,2)], 1, max))
+  fd = cbind(fd[1], rowMeans(fd[-c(1,2)])) #mean
+  colnames(fd) =  colnames(fd.max) = c("Subject", "FD")
+  dvars = read.table(FILE_DVARS)
+  dvars = cbind(fd[1], rowMeans(dvars[-c(1,2)]))
+
+  par(mfrow = c(2, 2))
+  hist(fd[, 2], 30, main = "Mean fd")
+  hist(fd.max[, 2], 30, main = "Max fd")
+  hist(dvars[, 2], 30, main = "Mean dvars")
+  hist(meica_dof[, 2], 30, main = "Mean dof")
+  print(subset(fd, FD > 0.3))
+  print(subset(fd.max, FD > 1.3))
+  return(fd)
+}
+# baseline
+fd.1 = motion_parameters("~/Data/NSPN/ICA_ME/nspn_ME/ica200.gica/")
+
+#follow up
+fd.2 = motion_parameters("~/Data/NSPN/ICA_ME/nspn_ME_fu/ica200.bsl.gica/")
+
+fd.12 = merge(fd.1, fd.2, by = "Subject",, suffixes = c(".1", ".2"))
+plot(FD.2 ~ FD.1, data = fd.12, xlim = c(0, 0.5), ylim = c(0, 0.5))
+abline(0, 1)
+cor.test(fd.12$FD.2, fd.12$FD.1)
+
+```
+
+Different number of iterations
+```{r, fig.width = 20, width = 1000 }
+
+# baseline
+DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_10iters_democorrected_")
+RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.bsl"), "data.RData")
+rho.bsl = plot_perms(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+           myfigname = 'Accuracy-decAc-demo_corrected_baseline_10iters')
+
+# baseline
+DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_50iters_democorrected_")
+RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.bsl"), "data.RData")
+rho.bsl = plot_perms(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+           myfigname = 'Accuracy-decAc-demo_corrected_baseline_50iters')
+
+# baseline
+DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_100iters_democorrected_")
+RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.bsl"), "data.RData")
+rho.bsl = plot_perms(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+           myfigname = 'Accuracy-decAc-demo_corrected_baseline_100iters')
+
+# DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_long_10folds_100iters_25perms_democorrected_")
+# RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+# RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc"), "data.RData")
+# load(RESULTS_FILE)
+# source("~/Software/FCPC/stats/prediction_funcs.R")
+# rho.100 = statstodf(var.network.results, "100", check_pars = F) 
+# 
+# DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_long_10folds_100iters_democorrected_")
+# RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+# RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc"), "data.RData")
+# load(RESULTS_FILE)
+# source("~/Software/FCPC/stats/prediction_funcs.R")
+# rho.100.b = statstodf(var.network.results, "100.b", check_pars = F) 
+# 
+# DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_long_10folds_200iters_democorrected_")
+# RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+# RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc"), "data.RData")
+# load(RESULTS_FILE)
+# source("~/Software/FCPC/stats/prediction_funcs.R")
+# rho.200 = statstodf(var.network.results, "200", check_pars = F) 
+# 
+# 
+# plot_combinations(rbind(rho.100, rho.100.b, rho.200)%>% arrange(network, group_name), 
+#                   "d\n (Controlling for all covariates except IQ)", 
+#                   myfigname = 'Accuracy-iterations')
+
+```
+
 
 Decision acuity, non-depressed sample
 
-```{r }
+plot_perms(RESULT_FILE, "d\n (Controlling for all covariates except IQ)", myfigname = 'Accuracy-decAc-demo_corrected')
 
-RESULTS_DIR = file.path(OUTPUT_DIR, "mediation_data_nondep_7mods_200_1decAc") 
-RESULTS_FILE = file.path(RESULTS_DIR, "data.RData")
-load(RESULTS_FILE)
-source("~/Software/FCPC/stats/prediction_funcs.R")
-FIGS_DIR = RESULTS_DIR
-
-print(var.prediction.results$cor.test.twotailed)
-plot_combinations(var.mediation.network.results, var.prediction.results$cor.test.twotailed, module_labels_, "d")
-#make_mediation_table(all.mediation.results, all_module_labels_, fdr_correct = fdr_correct_)
-
-# replace correlations by corrected versions
+```{r, fig.width = 20, width = 1000 }
 
 print("------------------------------")
-print("Controlling for demographics")
+print("Demo corrected")
 print("------------------------------")
 
+# baseline
+DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_50iters_democorrected_")
+RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.bsl"), "data.RData")
+rho.bsl = plot_perms(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+           myfigname = 'Accuracy-decAc-demo_corrected_baseline')
 
-controlfor = c("brain_vol", "fd", "meica_dof",  "UCL", "CBU")
 
-var.corrected.network.results = NULL
+# follow-up
+RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.fu"), "data.RData")
+rho.fu = plot_perms(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+           myfigname = 'Accuracy-decAc-demo_corrected_followup')
 
-for (i in seq(length(var.mediation.network.results))){
-  var.corrected.network.results[[i]] = do_correction(DIR_ICA_ME, 
-                                                     var.mediation.network.results[[i]], 
-                                                     demo.pars,
-                                                     controlfor = controlfor)
-}
 
-var.corrected.results =  do_correction(DIR_ICA_ME, 
-                                       var.mediation.results, 
-                                       demo.pars,
-                                       controlfor = controlfor)
-print(var.corrected.results$cor.test.twotailed)
-
-plot_combinations(var.corrected.network.results, var.corrected.results$cor.test.twotailed, module_labels_, "d\n (Controlling for all covariates except IQ)", myfigname = 'Accuracy-demo_corrected')
+# follow-up, selecting
+RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.fu"), "data.RData")
+rho.fu = plot_perms(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+           myfigname = 'Accuracy-decAc-demo_corrected_followup_selection', selection = rho.bsl$network[rho.bsl$pvalues.FWE < 0.05])
 
 
 print("------------------------------")
-print("Controlling forIQ")
+print("Cognitive corrected")
 print("------------------------------")
-
-
-controlfor = c("brain_vol", "fd", "meica_dof",  "UCL", "CBU", "IQcomp")
-
-var.corrected.network.results = NULL
-
-
-for (i in seq(length(var.mediation.network.results))){
-  var.corrected.network.results[[i]] = do_correction(DIR_ICA_ME, 
-                                                     var.mediation.network.results[[i]], 
-                                                     demo.pars,
-                                                     controlfor = controlfor)
-}
-
-var.corrected.results =  do_correction(DIR_ICA_ME, 
-                                       var.mediation.results, 
-                                       demo.pars,
-                                       controlfor = controlfor)
-
-print(var.corrected.results$cor.test.twotailed)
-
-plot_combinations(var.corrected.network.results, var.corrected.results$cor.test.twotailed, module_labels_, "d\n (Controlling for all covariates including IQ)", myfigname = 'Accuracy-IQ_corrected')
+DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_10iters_cogcorrected_")
+RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.bsl"), "data.RData")
+plot_perms(RESULTS_FILE, "d\n (Controlling for all covariates including IQ)", myfigname = 'Accuracy-decAc-IQ_corrected')
 
 ```
 
+IQ, non-depressed sample
+
+```{r, fig.width = 20, width = 1000 }
+
+print("------------------------------")
+print("Demo corrected")
+print("------------------------------")
+DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_100iters_democorrected_")
+RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "IQcomp"), "data.RData")
+load(RESULTS_FILE)
+source("~/Software/FCPC/stats/prediction_funcs.R")
+rho = statstodf(var.network.results, "bsl") %>% arrange(network, group_name)
+rm(var.network.results)
+plot_combinations(rho, "IQ\n (Controlling for all covariates except d)", myfigname = 'Accuracy-IQcomp-demo_corrected')
+
+
+print("------------------------------")
+print("Cognitive corrected")
+print("------------------------------")
+DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_100iters_cogcorrected_")
+RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "IQcomp"), "data.RData")
+load(RESULTS_FILE)
+source("~/Software/FCPC/stats/prediction_funcs.R")
+rho = statstodf(var.network.results, "bsl") %>% arrange(network, group_name)
+plot_combinations(rho, "IQ\n (Controlling for all covariates including d)", myfigname = 'Accuracy-IQcomp-decAc_corrected')
+
+```
+
+
+
+# plot
+```{r}
+stophere
+FIGS_DIR = OUTPUT_DIR
+
+plot_combinations(rbind(rho.bsl, rho.fu) %>% arrange(network, timepoint), "d", myfigname = 'Accuracy-decAc')
+
+plot_combinations(rbind(rho.bsl.democorrected, rho.fu.democorrected) %>% arrange(network, timepoint), "d\n (Controlling for all covariates except IQ)", myfigname = 'Accuracy-decAc-demo_corrected')
+
+plot_combinations(rbind(rho.bsl.IQcorrected, rho.fu.IQcorrected) %>% arrange(network, timepoint), "d\n (Controlling for all covariates including IQ)", myfigname = 'Accuracy-decAc-IQ_corrected')
+
+```
 
 
 IQ composite, non-depressed sample
 
-```{r}
 
-RESULTS_DIR = file.path(OUTPUT_DIR, "mediation_data_nondep_7mods_200_1IQcomp")
-RESULTS_FILE = file.path(RESULTS_DIR, "data.RData")
+```{r}
+print("------------------------------")
+print("Baseline")
+print("------------------------------")
+
+
+DIR_PREFFIX = paste0("prediction_data_nondep_Power_ledoit_LOOCV", NITER, "iters_")
+
+RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "IQcomp.bsl"), "data.RData")
 load(RESULTS_FILE)
 source("~/Software/FCPC/stats/prediction_funcs.R")
-FIGS_DIR = RESULTS_DIR
+rho.bsl = statstodf(var.network.results, "bsl")
+
+
+# replace correlations by corrected versions
+
+print("------------------------------")
+print("Controlling for demographics")
+print("------------------------------")
+
+controlfor = c("brain_vol", "fd", "UCL.1", "CBU.1", "meica_dof")
+
+var.corrected.network.results = NULL
+
+for (i in seq(length(var.network.results))){
+  var.corrected.network.results[[i]] = do_correction(DIR_ICA_ME, 
+                                                     var.network.results[[i]], 
+                                                     data.pars,
+                                                     controlfor = controlfor)
+}
+
+
+rho.bsl.democorrected = statstodf(var.corrected.network.results, "bsl.democorrected")
+
+
+print("------------------------------")
+print("Controlling for d")
+print("------------------------------")
+
+
+controlfor = c("brain_vol", "fd", "meica_dof",  "UCL.1", "CBU.1", "decAc.bsl")
+
+var.corrected.network.results = NULL
+
+
+for (i in seq(length(var.network.results))){
+  var.corrected.network.results[[i]] = do_correction(DIR_ICA_ME, 
+                                                     var.network.results[[i]], 
+                                                     data.pars,
+                                                     controlfor = controlfor)
+}
+
+
+rho.bsl.dcorrected = statstodf(var.corrected.network.results, "bsl.dcorrected")
+
+```
+
+```{r}
+print("------------------------------")
+print("Follow-up")
+print("------------------------------")
+
+
+RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "IQcomp.fu"), "data.RData")
+load(RESULTS_FILE)
+source("~/Software/FCPC/stats/prediction_funcs.R")
+rho.fu = statstodf(var.network.results, "fu")
+  
 print(var.prediction.results$cor.test.twotailed)
-plot_combinations(var.mediation.network.results, var.prediction.results$cor.test.twotailed, module_labels_, "IQ")
 
-#make_mediation_table(all.mediation.results, all_module_labels_, fdr_correct = fdr_correct_)
 
-#output_results(DIR_ICA_ME, var.prediction.results, RESULTS_DIR)
+# replace correlations by corrected versions
+
+print("------------------------------")
+print("Controlling for demographics")
+print("------------------------------")
+
+controlfor = c("brain_vol", "fd", "UCL.2", "CBU.2", "meica_dof")
+
+var.corrected.network.results = NULL
+
+for (i in seq(length(var.network.results))){
+  var.corrected.network.results[[i]] = do_correction(DIR_ICA_ME, 
+                                                     var.network.results[[i]], 
+                                                     data.pars,
+                                                     controlfor = controlfor)
+}
+
+
+rho.fu.democorrected = statstodf(var.corrected.network.results, "fu.democorrected")
+
+
+print("------------------------------")
+print("Controlling for IQ")
+print("------------------------------")
+
+
+controlfor = c("brain_vol", "fd", "meica_dof",  "UCL.2", "CBU.2", "decAc.fu")
+
+var.corrected.network.results = NULL
+
+
+for (i in seq(length(var.network.results))){
+  var.corrected.network.results[[i]] = do_correction(DIR_ICA_ME, 
+                                                     var.network.results[[i]], 
+                                                     data.pars,
+                                                     controlfor = controlfor)
+}
+
+
+rho.fu.dcorrected = statstodf(var.corrected.network.results, "fu.dcorrected")
+
+```
+
+# plot
+```{r}
+FIGS_DIR = OUTPUT_DIR
+
+plot_combinations(rbind(rho.bsl, rho.fu) %>% arrange(network, timepoint), "d", myfigname = 'Accuracy-IQcomp')
+
+plot_combinations(rbind(rho.bsl.democorrected, rho.fu.democorrected) %>% arrange(network, timepoint), "IQ\n (Controlling for all covariates except d)", myfigname = 'Accuracy-IQcomp-demo_corrected')
+
+plot_combinations(rbind(rho.bsl.dcorrected, rho.fu.dcorrected) %>% arrange(network, timepoint), "IQ\n (Controlling for all covariates including d)", myfigname = 'Accuracy-IQcomp-decAc_corrected')
+
+```
+
+
+
+```{r}
+STOPHERE
+----------------------------------
+
+
+
+RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "IQcomp.bsl"), "data.RData")
+load(RESULTS_FILE)
+source("~/Software/FCPC/stats/prediction_funcs.R")
+rho.bsl = statstodf(var.network.results, "bsl")
 
 # replace correlations by corrected versions
 
@@ -129,25 +366,19 @@ print("Controlling for demographics")
 print("------------------------------")
 
 
-controlfor = c("brain_vol", "fd", "meica_dof",  "UCL", "CBU")
+controlfor = c("brain_vol", "fd", "meica_dof",  "UCL.1", "CBU.1")
 
 var.corrected.network.results = NULL
 
 for (i in seq(length(var.mediation.network.results))){
   var.corrected.network.results[[i]] = do_correction(DIR_ICA_ME, 
-                                                     var.mediation.network.results[[i]], 
+                                                     var.network.results[[i]], 
                                                      demo.pars,
                                                      controlfor = controlfor)
 }
 
-var.corrected.results =  do_correction(DIR_ICA_ME, 
-                                       var.mediation.results, 
-                                       demo.pars,
-                                       controlfor = controlfor)
 
-print(var.corrected.results$cor.test.twotailed)
 
-plot_combinations(var.corrected.network.results, var.corrected.results$cor.test.twotailed, module_labels_, "IQ\n (Controlling for all covariates except d)", myfigname = 'Accuracy-demo_corrected')
 
 
 print("------------------------------")
@@ -175,6 +406,56 @@ print(var.corrected.results$cor.test.twotailed)
 
 plot_combinations(var.corrected.network.results, var.corrected.results$cor.test.twotailed, module_labels_, "IQ\n (Controlling for all covariates including d)", myfigname = 'Accuracy-decAc_corrected')
 
+
+```
+
+```{r}
+if (F){
+
+print("------------------------------")
+print("Demo corrected")
+print("------------------------------")
+
+# split in independent groups
+DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_100iters_democorrected_split_")
+RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.bsl"), "data.RData")
+load(RESULTS_FILE)
+rho.bsl = statstodf(var.network.results, "bsl") %>% arrange(network, group_name)
+cor.perm.bsl = sapply(var.network.results, function(x) x$cor.test$perm)
+rm(var.network.results)
+
+DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_100iters_democorrected_split_")
+RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.fu"), "data.RData")
+load(RESULTS_FILE)
+rho.fu = statstodf(var.network.results, "fu") %>% arrange(network, group_name)
+cor.perm.fu = sapply(var.network.results, function(x) x$cor.test$perm)
+rm(var.network.results)
+
+plot_combinations(rbind(rho.bsl, rho.fu), "d\n (Controlling for all covariates except IQ)", myfigname = 'Accuracy-decAc-demo_corrected-split', group = T)
+
+# compare effects
+cor.perm.bsl = cor.perm.bsl[, -ncol(cor.perm.bsl)]
+cor.perm.fu = cor.perm.fu[, -ncol(cor.perm.fu)]
+r.perm = sapply(seq(nrow(cor.perm.bsl)), function (i) cor.test(cor.perm.bsl[i, ], cor.perm.fu[i, ])$estimate)
+pvalue = sum(r.perm[1] <= r.perm)/length(r.perm)
+
+r.bsl = subset(rho.bsl, group_name == "bsl" & from != "All")$mean
+r.fu = subset(rho.fu, group_name == "fu" & from != "All")$mean
+print(cor.test(r.bsl, r.fu))
+
+save_fig(figname = "GroupCorrelation-split", res = BWRES)
+
+par(mfrow=c(1,1))
+plot(r.bsl, r.fu, xlab = "Baseline r", ylab = "Follow-up r", pch = 20, col = "white" )
+text(r.bsl, r.fu,
+     labels = subset(rho.bsl, from != "All")$from)
+abline(0, 1, lty = 2)
+legend("topleft", legend = paste("r=", format(r.perm[1], digits = 2), 
+                                 "p=", pvalue))
+dev.off()
+}
 
 ```
 
