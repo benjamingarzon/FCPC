@@ -1,8 +1,8 @@
 
-###############################################
+###############################################################################
 # generate permutations taking into account group structure
 # for permutation testing
-###############################################
+###############################################################################
 generate_permutation = function(subject, group){
   
   if (is.null(group)){
@@ -14,6 +14,7 @@ generate_permutation = function(subject, group){
     unique_subjects = as.numeric(names(group_size))
     
     for (g in unique(group_size)){
+
       # shuffle around groups of size g
       mysubjects = unique_subjects[group_size == g]
       myshuffle = sample(mysubjects, replace = F)
@@ -31,15 +32,19 @@ generate_permutation = function(subject, group){
           mysample[indices] = sample(new.indices, replace = F)
         }
       }
-      #  print(mysample)
     }
   }
   
   return(mysample)
 }
 
-doperm = function(perm, y.train, X.train, X.test, maxcomp, subject, group, filterthr, nonzero, NITER, eta.steps = seq(0.1, 0.9, 0.1)){
+###############################################################################
+# fit model for each permutation
+###############################################################################
+doperm = function(perm, y.train, X.train, X.test, maxcomp, subject, group, 
+                  filterthr, nonzero, NITER, eta.steps = seq(0.1, 0.9, 0.1)){
   
+  # larger eta more sparse
   K.iter = eta.iter = coefs.iter = offset.iter = NULL
   
   set.seed(perm) # to keep iterations consistent across folds
@@ -50,23 +55,72 @@ doperm = function(perm, y.train, X.train, X.test, maxcomp, subject, group, filte
   
   y.pred.iter = y.train.pred.iter = nfeatures.iter = NULL    
   
-  filtered = apply(X.train[, nonzero], 2, function(x) cor.test(y.train[mysample], x)$p.value < filterthr)
+  filtered = apply(X.train[, nonzero], 2, 
+                   function(x) cor.test(y.train[mysample], 
+                                        x)$p.value < filterthr)
   K.steps = seq(1, min(maxcomp, sum(filtered)))
   
-  #  browser()
-  mycv <- cv.spls( X.train[, nonzero][, filtered], y.train[mysample], eta = eta.steps, K = K.steps, plot.it = F, scale.x = F )
+  mycv <- cv.spls( X.train[, nonzero][, filtered], y.train[mysample], 
+                   eta = eta.steps, K = K.steps, plot.it = F, scale.x = F )
   
-  for (iter in seq(NITER)){
+  # iterate for bagging
+  if (NITER > 1){
+    for (iter in seq(NITER)){
+      
+      print(paste("Permutation", perm, "Iteration", iter))
+      
+      #bootstrap
+      mysample.b = sample(seq(length(y.train)), replace = TRUE)
+      X.train.sample = X.train[mysample.b, nonzero]
+      y.train.sample = y.train[mysample][mysample.b]
+      
+      # feature selection
+      filtered = apply(X.train.sample, 2, 
+                       function(x) cor.test(y.train.sample, 
+                                            x)$p.value < filterthr)
+      
+      if(sum(filtered) < 3) {
+        filtered = nonzero[nonzero]
+      }
+      K.opt = min(mycv$K.opt, sum(filtered))
+      mypls <- spls( X.train.sample[, filtered], 
+                     y.train.sample, 
+                     eta = mycv$eta.opt, 
+                     K = K.opt, scale.x = F  )
+      
+      y.pred.iter = cbind(y.pred.iter, 
+                          predict(mypls, X.test[, nonzero][, filtered]))
+      y.train.pred.iter = cbind(y.train.pred.iter, 
+                                predict(mypls, X.train.sample[, filtered]))
+      
+      nfeatures.iter[iter] = sum(filtered)
+      
+      K.iter = c(K.iter, K.opt)
+      eta.iter = c(eta.iter, mycv$eta.opt)
+      coefs.full = 0*nonzero
+      coefs.full[nonzero][filtered] = coef.spls(mypls)
+      coefs.iter = cbind(coefs.iter, coefs.full)
+      offset.iter = c(offset.iter, as.numeric(mypls$mu))
+      
+    } # iter loop
     
-    print(paste("Permutation", perm, "Iteration", iter))
+    #average results over iterations
+    y.pred.perm = rowMeans(y.pred.iter)
+    y.train.pred.perm = rowMeans(y.train.pred.iter)
+    nfeatures.perm = mean(nfeatures.iter)
+    
+  } else { # only 1 iteration
+    
+    print(paste("Permutation", perm))
     
     #bootstrap
-    mysample.b = sample(seq(length(y.train)), replace = TRUE)
-    X.train.sample = X.train[mysample.b, nonzero]
-    y.train.sample = y.train[mysample][mysample.b]
+    X.train.sample = X.train[, nonzero]
+    y.train.sample = y.train[mysample]
     
     # feature selection
-    filtered = apply(X.train.sample, 2, function(x) cor.test(y.train.sample, x)$p.value < filterthr)
+    filtered = apply(X.train.sample, 2, 
+                     function(x) cor.test(y.train.sample, 
+                                          x)$p.value < filterthr)
     
     if(sum(filtered) < 3) {
       filtered = nonzero[nonzero]
@@ -78,28 +132,21 @@ doperm = function(perm, y.train, X.train, X.test, maxcomp, subject, group, filte
                    eta = mycv$eta.opt, 
                    K = K.opt, scale.x = F  )
     
-    y.pred.iter = cbind(y.pred.iter, predict(mypls, X.test[, nonzero][, filtered]))
-    y.train.pred.iter = cbind(y.train.pred.iter, predict(mypls, X.train.sample[, filtered]))
-    
-    nfeatures.iter[iter] = sum(filtered)
-    
-    K.iter = c(K.iter, K.opt)
-    eta.iter = c(eta.iter, mycv$eta.opt)
+    K.iter = matrix(K.opt, 1, 1)
+    eta.iter = matrix(mycv$eta.opt, 1, 1)
     coefs.full = 0*nonzero
     coefs.full[nonzero][filtered] = coef.spls(mypls)
-    coefs.iter = cbind(coefs.iter, coefs.full)
-    offset.iter = c(offset.iter, as.numeric(mypls$mu))
+    coefs.iter = matrix(coefs.full, ncol = 1)
+    offset.iter = matrix(as.numeric(mypls$mu), 1, 1)
     
-  } # iter
-  #average results over iterations
-  y.pred.perm = rowMeans(y.pred.iter)
-  y.train.pred.perm = rowMeans(y.train.pred.iter)
-  nfeatures.perm = mean(nfeatures.iter)
+    #average results over iterations
+    y.pred.perm = matrix(predict(mypls, 
+                                 X.test[, nonzero][, filtered]), ncol = 1)
+    y.train.pred.perm = matrix(predict(mypls, 
+                                       X.train.sample[, filtered]), ncol = 1)
+    nfeatures.perm = sum(filtered)
+  } # iter if
   
-  #y.check = X.test %*% rowMeans(coefs.iter) + mean(offset.iter)
-  #plot(y.check, y.pred.perm, asp = 1)
-  #abline(0, 1)
-  #browser()
   return(list(
     y.pred.perm = y.pred.perm, 
     y.train.pred.perm = y.train.pred.perm,
@@ -112,14 +159,18 @@ doperm = function(perm, y.train, X.train, X.test, maxcomp, subject, group, filte
   )
 }
 
-do_crossvalidate_spls_covars_perm_par = function(fold_index, input, maxcomp, cluster, 
+###############################################################################
+# cross-validated model fitting and testing with permutation tests
+###############################################################################
+do_crossvalidate_spls_covars_perm_par = function(fold_index, input, 
+                                                 maxcomp, 
+                                                 cluster, 
                                                  subject = NULL, 
                                                  group = NULL, 
                                                  NITER = 20, 
                                                  NPERM = 100, 
                                                  filterthr = 0.05){
   
-  #browser()
   # selecting all features by default  
   X = input$X
   y = input$y
@@ -132,9 +183,7 @@ do_crossvalidate_spls_covars_perm_par = function(fold_index, input, maxcomp, clu
   if (!is.null(group)) group = input$group[-fold]
   
   nonzero = apply(X, 2, sd) > 0
-  
-  # print(paste("Fold index", fold_index))
-  
+
   X.train = as.matrix(X[-fold, , drop=FALSE])
   X.test = as.matrix(X[fold, , drop=FALSE])
   
@@ -142,12 +191,12 @@ do_crossvalidate_spls_covars_perm_par = function(fold_index, input, maxcomp, clu
   y.test = y.test.orig = y[fold]
   
   # deconfound
-  myform = as.formula(paste("y.train ~ 1 + ", paste(colnames(covars), collapse=" + ")))  
+  myform = as.formula(paste("y.train ~ 1 + ", 
+                            paste(colnames(covars), collapse=" + ")))  
   
   if(!is.null(covars)){
     covars.train = as.data.frame(covars[-fold, , drop=FALSE])
     covars.test = as.data.frame(covars[fold, , drop=FALSE])
-    
     mycovarmod = lm(myform, data = covars.train)
     y.train = y.train.orig - predict(mycovarmod, covars.train)
     y.test = y.test.orig - predict(mycovarmod, covars.test)
@@ -163,14 +212,13 @@ do_crossvalidate_spls_covars_perm_par = function(fold_index, input, maxcomp, clu
   }
   
   # run permutations
-  # learn to predict the unconfounded data (y.train.orig)
+  # learn to predict the unconfounded data (y.train)
   results_list = foreach(perm = seq(NPERM), .packages=c('spls'), 
                          .export=c('doperm', 'generate_permutation')) %dopar% 
-  # learn to predict the unconfounded data (y.train)
-    doperm(perm, y.train, X.train, X.test, maxcomp, subject, group, filterthr, nonzero, NITER)
-  # learn to predict the original data (y.train.orig)
-#  doperm(perm, y.train.orig, X.train, X.test, maxcomp, subject, group, filterthr, nonzero, NITER)
-  
+    doperm(perm, y.train, X.train, X.test, maxcomp, subject, group, 
+           filterthr, nonzero, NITER)
+
+  # collect results
   y.pred.perm = sapply(results_list, function(x) x$y.pred.perm)
   y.train.pred.perm = sapply(results_list, function(x) x$y.train.pred.perm)
   nfeatures.perm = sapply(results_list, function(x) x$nfeatures.perm)
@@ -204,7 +252,7 @@ do_crossvalidate_spls_covars_perm_par = function(fold_index, input, maxcomp, clu
               coefs.perm = coefs.perm,
               coefs = coefs,
               offset = offset
-              )
+  )
   )
 }
 

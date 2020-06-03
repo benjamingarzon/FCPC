@@ -12,7 +12,7 @@ library(knitr)
 library(xtable)
 library(dplyr)
 setwd("~/Software/FCPC/stats")
-source("~/Software/FCPC/stats/prediction_funcs.R")
+source("~/Software/FCPC/stats/plotting_funcs.R")
 BWRES=1000
 POINTSIZE = 35
 CEX_AXIS = 70
@@ -32,9 +32,10 @@ FIGS_DIR = OUTPUT_DIR
 
 ```
 
+
 Motion parameters
 
-```{r}
+```{r eval = F}
 
 
 motion_parameters = function(DIR_ICA_ME){
@@ -72,63 +73,126 @@ abline(0, 1)
 cor.test(fd.12$FD.2, fd.12$FD.1)
 
 ```
+```{r eval = F}
+# baseline
+DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_200iters_democorrected_")
+RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.bsl"), "data.RData")
+rho.bsl = plot_intervals(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+           myfigname = 'Accuracy-decAc-demo_corrected_baseline_10iters')
+# different nsamples
+load(RESULTS_FILE)
+j = 8
+results = var.network.results[[j]]
+z = fisherz(results$cor.test$perm)
+shapiro.test(z)
+qqnorm(z/sd(z))
+abline(0, 1)
+
+sigma = sd(z[-1])
+
+pvalue = NULL
+nsamps = seq(30, 50, 10)
+for(i in seq(length(nsamps))){
+  nsamp = nsamps[i]
+  z.down = sample(z, nsamp, replace = F)
+  sigma.down = sd(z.down)
+  pvalue[i] = 0.5*erfc(z[1]/sigma.down)
+
+}
+
+plot(nsamps, pvalue, pch = 20, type = 'b', ylim = range(c(results$cor.test$p.value, pvalue)))
+abline(results$cor.test$p.value, 0)
+
+hist(z, 100, probability = T)
+lines(x <- seq(-.5, .5, .01) , dnorm(x, 0, sigma), type = 'l', col = 'red', lwd = 2)
+lines(x <- seq(-.5, .5, .01) , dnorm(x, 0, sigma.down), type = 'l', col = 'red')
+
+# across modules
+nsamp = 50
+
+pvalue = pvalue.true = NULL
+for (j in seq(length(var.network.results))){
+results = var.network.results[[j]]
+z = fisherz(results$cor.test$perm)
+  print(shapiro.test(z))
+  qqnorm(z/sd(z))
+  abline(0, 1)
+  z.down = sample(z, nsamp, replace = F)
+  sigma.down = sd(z.down)
+  pvalue[j] = 0.5*erfc(z[1]/sigma.down)
+  pvalue.true[j] = results$cor.test$p.value
+}
+
+plot(log(pvalue.true, 10), log(pvalue, 10), pch = 20)
+abline(0, 1)
+
+```
 
 Different number of iterations
-```{r, fig.width = 20, width = 1000 }
+```{r, fig.width = 20, width = 1000, eval = F}
 
 # baseline
+DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_1iters_democorrected_")
+RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.bsl"), "data.RData")
+rho.bsl = plot_intervals(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+           myfigname = 'Accuracy-decAc-demo_corrected_baseline_1iters')
+
+
+
 DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_10iters_democorrected_")
 RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
 RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.bsl"), "data.RData")
-rho.bsl = plot_perms(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+rho.bsl = plot_intervals(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
            myfigname = 'Accuracy-decAc-demo_corrected_baseline_10iters')
 
-# baseline
-DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_50iters_democorrected_")
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.fu"), "data.RData")
+rho.fu = plot_intervals(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+           myfigname = 'Accuracy-decAc-demo_corrected_followup_10iters')
+
+
+DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_20iters_democorrected_")
 RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
 RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.bsl"), "data.RData")
-rho.bsl = plot_perms(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
-           myfigname = 'Accuracy-decAc-demo_corrected_baseline_50iters')
+rho.bsl = plot_intervals(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+           myfigname = 'Accuracy-decAc-demo_corrected_baseline_20iters')
 
-# baseline
-DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_100iters_democorrected_")
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.fu"), "data.RData")
+rho.fu = plot_intervals(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+           myfigname = 'Accuracy-decAc-demo_corrected_followup_20iters')
+
+DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_20iters_democorrected_")
 RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
 RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.bsl"), "data.RData")
-rho.bsl = plot_perms(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
-           myfigname = 'Accuracy-decAc-demo_corrected_baseline_100iters')
+rho.bsl = plot_intervals(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+           myfigname = 'Accuracy-decAc-notagecorrected_baseline_20iters')
 
-# DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_long_10folds_100iters_25perms_democorrected_")
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.fu"), "data.RData")
+rho.fu = plot_intervals(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+           myfigname = 'Accuracy-decAc-notagecorrected_followup_20iters')
+
+# baseline
+# DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_100iters_democorrected_")
 # RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
-# RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc"), "data.RData")
-# load(RESULTS_FILE)
-# source("~/Software/FCPC/stats/prediction_funcs.R")
-# rho.100 = statstodf(var.network.results, "100", check_pars = F) 
-# 
-# DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_long_10folds_100iters_democorrected_")
-# RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
-# RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc"), "data.RData")
-# load(RESULTS_FILE)
-# source("~/Software/FCPC/stats/prediction_funcs.R")
-# rho.100.b = statstodf(var.network.results, "100.b", check_pars = F) 
-# 
-# DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_long_10folds_200iters_democorrected_")
-# RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
-# RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc"), "data.RData")
-# load(RESULTS_FILE)
-# source("~/Software/FCPC/stats/prediction_funcs.R")
-# rho.200 = statstodf(var.network.results, "200", check_pars = F) 
-# 
-# 
-# plot_combinations(rbind(rho.100, rho.100.b, rho.200)%>% arrange(network, group_name), 
-#                   "d\n (Controlling for all covariates except IQ)", 
-#                   myfigname = 'Accuracy-iterations')
+# RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.bsl"), "data.RData")
+# rho.bsl = plot_intervals(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+#            myfigname = 'Accuracy-decAc-demo_corrected_baseline_100iters')
+
+
+DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_150iters_democorrected_")
+RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.bsl"), "data.RData")
+rho.bsl = plot_intervals(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+           myfigname = 'Accuracy-decAc-demo_corrected_baseline_150iters')
+
+
 
 ```
 
 
 Decision acuity, non-depressed sample
 
-plot_perms(RESULT_FILE, "d\n (Controlling for all covariates except IQ)", myfigname = 'Accuracy-decAc-demo_corrected')
 
 ```{r, fig.width = 20, width = 1000 }
 
@@ -137,68 +201,77 @@ print("Demo corrected")
 print("------------------------------")
 
 # baseline
-DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_50iters_democorrected_")
+DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_200iters_democorrected_")
 RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
 RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.bsl"), "data.RData")
-rho.bsl = plot_perms(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+rho.d.bsl = plot_intervals(RESULTS_FILE, "d at baseline\n (Controlling for all covariates except IQ)", 
            myfigname = 'Accuracy-decAc-demo_corrected_baseline')
 
 
 # follow-up
-RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
 RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.fu"), "data.RData")
-rho.fu = plot_perms(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
+rho.d.fu = plot_intervals(RESULTS_FILE, "d at follow-up\n (Controlling for all covariates except IQ)", 
            myfigname = 'Accuracy-decAc-demo_corrected_followup')
 
 
 # follow-up, selecting
-RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
-RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.fu"), "data.RData")
-rho.fu = plot_perms(RESULTS_FILE, "d\n (Controlling for all covariates except IQ)", 
-           myfigname = 'Accuracy-decAc-demo_corrected_followup_selection', selection = rho.bsl$network[rho.bsl$pvalues.FWE < 0.05])
+plot_intervals(RESULTS_FILE, "d at follow-up\n (Controlling for all covariates except IQ)", 
+             myfigname = 'Accuracy-decAc-demo_corrected_followup_selection', selection = rho.d.bsl$network[rho.d.bsl$fdrp < 0.05])
 
 
 print("------------------------------")
 print("Cognitive corrected")
 print("------------------------------")
-DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_10iters_cogcorrected_")
+DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_200iters_cogcorrected_")
 RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
 RESULTS_FILE = file.path(paste0(RESULTS_DIR, "decAc.bsl"), "data.RData")
-plot_perms(RESULTS_FILE, "d\n (Controlling for all covariates including IQ)", myfigname = 'Accuracy-decAc-IQ_corrected')
+rho.d2.bsl = plot_intervals(RESULTS_FILE, "d at baseline\n (Controlling for all covariates including IQ)", myfigname = 'Accuracy-decAc-IQ_corrected')
 
 ```
 
 IQ, non-depressed sample
 
 ```{r, fig.width = 20, width = 1000 }
-
+if (F){
 print("------------------------------")
 print("Demo corrected")
 print("------------------------------")
 DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_100iters_democorrected_")
 RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
-RESULTS_FILE = file.path(paste0(RESULTS_DIR, "IQcomp"), "data.RData")
-load(RESULTS_FILE)
-source("~/Software/FCPC/stats/prediction_funcs.R")
-rho = statstodf(var.network.results, "bsl") %>% arrange(network, group_name)
-rm(var.network.results)
-plot_combinations(rho, "IQ\n (Controlling for all covariates except d)", myfigname = 'Accuracy-IQcomp-demo_corrected')
-
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "IQcomp.bsl"), "data.RData")
+rho.I.bsl = plot_intervals(RESULTS_FILE, "IQ at baseline \n (Controlling for all covariates except d)", myfigname = 'Accuracy-IQcomp-demo_corrected')
+}
 
 print("------------------------------")
 print("Cognitive corrected")
 print("------------------------------")
-DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_100iters_cogcorrected_")
+DIR_PREFFIX = paste0("prediction_data_nondep_ICA_ridge_20folds_200iters_cogcorrected_")
 RESULTS_DIR = file.path(OUTPUT_DIR, DIR_PREFFIX) 
-RESULTS_FILE = file.path(paste0(RESULTS_DIR, "IQcomp"), "data.RData")
-load(RESULTS_FILE)
-source("~/Software/FCPC/stats/prediction_funcs.R")
-rho = statstodf(var.network.results, "bsl") %>% arrange(network, group_name)
-plot_combinations(rho, "IQ\n (Controlling for all covariates including d)", myfigname = 'Accuracy-IQcomp-decAc_corrected')
+RESULTS_FILE = file.path(paste0(RESULTS_DIR, "IQcomp.bsl"), "data.RData")
+rho.I2.bsl =  plot_intervals(RESULTS_FILE, "IQ at baseline\n (Controlling for all covariates including d)", myfigname = 'Accuracy-IQcomp-decAc_corrected')
 
 ```
 
+Make a table
 
+```{r}
+allresults = cbind(rho.d.bsl[c("network", "mean", "p.approx", "fdrp", "sig")], rho.d.fu[c("mean", "p.approx", "fdrp", "sig")],
+             rho.d2.bsl[c("mean", "p.approx", "fdrp", "sig")], rho.I2.bsl[c("mean", "p.approx", "fdrp", "sig")])
+
+ff = function(x){
+  ifelse(!is.na(as.numeric(x)),   
+         ifelse (abs(as.numeric(x)) >= 0.001,  
+                 format(round(as.numeric(x), 3), digits = 3, nsmall= 3, scientific = F),
+                 ifelse(abs(as.numeric(x)) > 1e-6 ,
+                format(as.numeric(x), digits = 3, nsmall= 3, scientific = T), "< 1e-6")), 
+         x)
+  
+}
+
+View(
+    apply(allresults, c(1, 2), ff)
+)
+```
 
 # plot
 ```{r}
@@ -458,4 +531,3 @@ dev.off()
 }
 
 ```
-
