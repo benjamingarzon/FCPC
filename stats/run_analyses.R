@@ -12,13 +12,13 @@ fig_count = 0
 setwd("~/Software/FCPC/")
 source("stats/aux_pls.R")
 source("stats/prediction_funcs.R")
-#source("process/organize_data.R")
+source("process/organize_data.R")
 
 ###############################################################################
 # define parameters
 ###############################################################################
-NPROCS = 5# 35
-N_FOLDS = 20
+NPROCS = 7# 35
+N_FOLDS = 5
 NITER = 3 #200
 NPERM = 5 #101
 DEFAULTMAXCOMP = 10
@@ -254,7 +254,6 @@ rm(var.network.results)
 #############################################################
 
 DIR_PREFFIX = paste0(DIR_PREFFIX0, "notagecorrected_")
-data.pars = data.pars.nondep
 
 print("------------------------------")
 print("Not age corrected")

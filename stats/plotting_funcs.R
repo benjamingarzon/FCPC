@@ -4,6 +4,13 @@
 # benjamin.garzon@gmail.com
 ###############################################################################
 
+mypackages = c("ggplot2", "dplyr", "reshape2", "psych", "pracma", "mclust")
+#library(knitr)
+#library(xtable)
+#library(dplyr)
+
+lapply(mypackages, function (x) if (!require(x, character.only = T)) install.packages(x) else print(paste(x, "already installed!")))
+
 
 ###############################################################################
 # Create data frame with results for all networks
@@ -23,7 +30,7 @@ statstodf = function(myresults, group_name, check_pars = T, alpha = 0.05){
       # high = sapply(myresults, function(x) ifelse(!x$empty, 
       #quantile(x$cor.test$perm, 0.975), NA)),
       low = sapply(myresults, 
-                   function(x) ifelse(!x$empty, min(x$cor.test$perm), NA)),
+                    function(x) ifelse(!x$empty, min(x$cor.test$perm), NA)),
       high = sapply(myresults, 
                     function(x) ifelse(!x$empty, 
                                        quantile(x$cor.test$perm, 0.95), NA)),
@@ -53,25 +60,24 @@ statstodf = function(myresults, group_name, check_pars = T, alpha = 0.05){
   nullmax = apply(z.perm, 1, max)
   
   mysigma = apply(z.perm[-1, ], 2, function(x) sqrt(sum(x^2)/length(x)))
-  rho$low = -fisherz2r(2*mysigma) 
-  rho$high = fisherz2r(2*mysigma) 
+  rho$low = -1 #fisherz2r(2*mysigma) 
+  rho$high = fisherz2r(qnorm(0.95, sd = mysigma)) 
   rho$p.approx = 1 - pnorm(z.perm[1, ]/mysigma)
   rho$sigma = mysigma
+  
+  #browser()
   # fit a Gaussian mixture to the distribution of the max
-  #  fit = Mclust(nullmax[-1], G=2, model="V")
-  #  mymu = fit$parameters$mean
-  #  mysigma = sqrt(fit$parameters$variance$sigmasq)
-  #  mypro = fit$parameters$pro
+  fit = Mclust(nullmax[-1], G=2, model="V")
+  mymu = fit$parameters$mean
+  mysigma = sqrt(fit$parameters$variance$sigmasq)
+  mypro = fit$parameters$pro
   
-  #  plot(fit, what="density", main="", xlab="r")
-  hist(nullmax[-1], 20, add = T, col = rgb(1, 0, 0, 0.5), probability = T)
-  # rho$pvalues.FWE.approx = 
-  # 0.5*(mypro[1]*(1 - pnorm((z.perm[1, ] - mymu[1])/mysigma[1])) + 
-  # mypro[2]*(1 - pnorm((z.perm[1, ] - mymu[2])/mysigma[2]))
-  # )
-  
-  # rho$pvalues.FWE.approx = 
-  # 1 - pnorm((z.perm[1, ] - mean(nullmax[-1]))/sd(nullmax[-1]))
+  plot(fit, what="density", main="", xlab="r")
+  hist(nullmax[-1], 10, add = T, col = rgb(1, 0, 0, 0.5), probability = T)
+  rho$pvalues.FWE.approx = 
+  0.5*(mypro[1]*(1 - pnorm((z.perm[1, ] - mymu[1])/mysigma[1])) + 
+  mypro[2]*(1 - pnorm((z.perm[1, ] - mymu[2])/mysigma[2]))
+  )
   
   qqnorm((nullmax[-1] - mean(nullmax[-1]))/sd(nullmax[-1]))
   abline(0, 1)
@@ -93,7 +99,10 @@ statstodf = function(myresults, group_name, check_pars = T, alpha = 0.05){
   rho$fdrp = ps.adjusted 
   rho$sig = ifelse(rho$p.approx < alpha, "*",  "")
   rho$sig[rho$fdrp < alpha] = "**"
-  #rho$sig[rho$pvalues.FWE < alpha] = "**"
+  #rho$sig.FWE = ifelse(rho$p.approx < alpha, "*",  "")
+  #rho$sig.FWE[rho$pvalues.FWE.approx < alpha] = "**"
+  
+    #rho$sig[rho$pvalues.FWE < alpha] = "**"
 
   rho = rho %>% arrange(network)
   print(rho)
@@ -123,6 +132,7 @@ statstodf = function(myresults, group_name, check_pars = T, alpha = 0.05){
 plot_intervals = function(RESULTS_FILE, measure, myfigname, selection = NULL){
   
   load(RESULTS_FILE)
+  var.network.results = results
   if (!is.null(selection)){
     mylist = NULL
     j = 1
@@ -135,13 +145,12 @@ plot_intervals = function(RESULTS_FILE, measure, myfigname, selection = NULL){
   
   rho = statstodf(var.network.results, group_name  = "") %>% arrange(network) 
   
-  
   myplot = 
-    ggplot(rho, aes( x = network, y = mean, ymin = low, ymax = high, 
+    ggplot(rho, aes( x = network, y = mean, ymin = high, ymax = high, 
                      label = rho$sig)) + 
-    #    geom_linerange(aes(ymin = 0, ymax = high)) + 
     geom_errorbar(position = position_dodge(0.4), size = 2, linetype = 1, 
                   width = 0.4) + 
+    geom_linerange(aes(ymin = -0.25, ymax = high), width = 0.4) + 
     ggtitle(paste('Correlation between observed and predicted', 
                   measure, "\n")) + 
     xlab('Network') + 

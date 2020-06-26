@@ -169,7 +169,8 @@ do_crossvalidate_spls_covars_perm_par = function(fold_index, input,
                                                  group = NULL, 
                                                  NITER = 20, 
                                                  NPERM = 100, 
-                                                 filterthr = 0.05){
+                                                 filterthr = 0.05,
+                                                 savecoefs = ''){
   
   # selecting all features by default  
   X = input$X
@@ -236,6 +237,20 @@ do_crossvalidate_spls_covars_perm_par = function(fold_index, input,
                        mu = mu,
                        sigma = sigma)
   
+  # save these to disk to spare memory
+  if ( savecoefs != '') {
+    coefs.perm.file = tempfile(pattern = paste0("coefs-", fold_index, "-"), 
+                                       tmpdir = savecoefs, fileext = ".rda") 
+    save(coefs.perm, file = coefs.perm.file) 
+    
+    preprocessing.file = tempfile(pattern = paste0("preproc-", fold_index, "-"), 
+                                          tmpdir = savecoefs, fileext = ".rda")
+    save(preprocessing, file = preprocessing.file) 
+  } else {
+    preprocessing.file = ''
+    coefs.perm.file = ''
+  }
+  
   return(list(fold = fold,
               y.pred = y.pred,
               mysample.perm = mysample.perm,
@@ -248,8 +263,8 @@ do_crossvalidate_spls_covars_perm_par = function(fold_index, input,
               coefs = coefs,
               eta.iter = eta.iter, 
               K.iter = K.iter,
-              preprocessing = preprocessing,
-              coefs.perm = coefs.perm,
+              preprocessing.file = preprocessing.file,
+              coefs.perm.file = coefs.perm.file,
               coefs = coefs,
               offset = offset
   )

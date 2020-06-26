@@ -2,19 +2,24 @@
 ###############################################################################
 # Several utility functions for prediction
 ###############################################################################
+# install packages
+r = getOption("repos")
+r["CRAN"] = "http://cran.us.r-project.org"
+options(repos = r)
+
+#MYLIBS =  "~/Software/R/x86_64-pc-linux-gnu-library/3.2" # knl
+#MYLIBS =  "~/Software/R/x86_64-pc-linux-gnu-library/3.3" # other
+#.libPaths( c( MYLIBS, .libPaths() ) )
 
 # install packages
-if (!require("pacman")) install.packages("pacman")
-pacman::p_load(mclust, pryr, spls, foreach, doParallel, doMC, caret, pracma, 
-               dplyr, RColorBrewer, scales, rlist, abind)
+mypackages = c("mclust", "pryr", "spls", "foreach", "doParallel", "doMC", "caret", "pracma", 
+               "dplyr", "RColorBrewer", "scales", "rlist", "abind", "psych")
+lapply(mypackages, function (x) if (!require(x, character.only = T)) install.packages(x) else print(paste(x, "already installed!")))
 
-#library(RColorBrewer)
 #library(scales)
-#library(lavaan)
 #library(RVAideMemoire)
 #library(psychometric)
 #library(boot)
-#library(psych)
 #library(rjson)
 
 FOLDSEED = sample(seq(10000), 1)
@@ -267,6 +272,7 @@ do_prediction = function(DIR_ICA_ME, # working dir
     
     cl <- makeCluster(NPROCS)
     registerDoParallel(cl)
+    clusterCall(cl, function(x) .libPaths(x), .libPaths())
     cv = foreach(fold_index = seq(length(folds))) %do% 
       do_crossvalidate_spls_covars_perm_par(fold_index, 
                                             list(X = ica_data, 
@@ -276,7 +282,9 @@ do_prediction = function(DIR_ICA_ME, # working dir
                                                  subject = mysubjects,
                                                  group = mygroup), 
                                             maxcomp = maxcomp, cluster = cl, 
-                                            NITER = NITER, NPERM = NPERM)
+                                            NITER = NITER, 
+                                            NPERM = NPERM, 
+                                            savecoefs = savecoefs)
     
     stopCluster(cl)
 
@@ -305,21 +313,25 @@ do_prediction = function(DIR_ICA_ME, # working dir
     results$coefs.stable = apply(results$coefs.cv, 1,
                                  function(x) 
                                    ifelse( prod(range(x)) < 0, 0, mean(x)))
-    
+    results$coefs.perm.files =  lapply(cv, 
+                                       function(x) x$coefs.perm.file)  
+    results$preprocessing.files =  lapply(cv, 
+                                       function(x) x$preprocessing.file)  
+    # browser()
 
     # save these to disk to spare memory
-    if ( savecoefs != '') {
-    coefs.perm = do.call("abind", 
-                         list(lapply(cv, function(x){x$coefs.perm}), along = 3))
-    results$coefs.perm.file = tempfile(pattern = "coefs", 
-                                       tmpdir = savecoefs, fileext = ".rda") 
-    save(coefs.perm, file = results$coefs.perm.file) 
-    
-    results$preprocessing.file = tempfile(pattern = "preproc", 
-                                          tmpdir = savecoefs, fileext = ".rda")
-    preprocessing = lapply(cv, function(x) x$preprocessing) 
-    save(preprocessing, file = results$preprocessing.file) 
-    }
+    # if ( savecoefs != '') {
+    # coefs.perm = do.call("abind", 
+    #                      list(lapply(cv, function(x){x$coefs.perm}), along = 3))
+    # results$coefs.perm.file = tempfile(pattern = "coefs", 
+    #                                    tmpdir = savecoefs, fileext = ".rda") 
+    # save(coefs.perm, file = results$coefs.perm.file) 
+    # 
+    # results$preprocessing.file = tempfile(pattern = "preproc", 
+    #                                       tmpdir = savecoefs, fileext = ".rda")
+    # preprocessing = lapply(cv, function(x) x$preprocessing) 
+    # save(preprocessing, file = results$preprocessing.file) 
+    # }
     
   } else{
     
@@ -330,12 +342,12 @@ do_prediction = function(DIR_ICA_ME, # working dir
     results$eta.iter = mymodel$eta.iter  
     results$K.iter = mymodel$K.iter
     
-    load(mymodel$coefs.perm.file)
-    mymodel$coefs.perm = coefs.perm
-
-    load(mymodel$preprocessing.file)
-    mymodel$preprocessing = preprocessing
-    
+    # load(mymodel$coefs.perm.file)
+    # mymodel$coefs.perm = coefs.perm
+    # 
+    # load(mymodel$preprocessing.file)
+    # mymodel$preprocessing = preprocessing
+     
     results$coefs.mean = mymodel$coefs.mean
     results$coefs.stable = mymodel$coefs.stable
 
@@ -421,9 +433,12 @@ apply_model = function(X, y, covars, model, mysubjects, nrep, nfold){
   fold = NULL
   y.test.mat = y.pred.mat = mysubjects.test = NULL
   
-  for (i in seq(length(model$preprocessing))){
+  for (i in seq(length(model$preprocessing.files))){
     trainers = as.vector(na.omit(match(model$training_subjects[[i]], 
                                        mysubjects)))
+    load(model$preprocessing.files[[i]])
+    load(model$coefs.perm.files[[i]])
+    
     trainers = trainers[!is.na(trainers)]
     testers = setdiff(mysubjects, trainers)
     fold = c(fold, as.vector(na.omit(match(testers, mysubjects))))
@@ -431,20 +446,20 @@ apply_model = function(X, y, covars, model, mysubjects, nrep, nfold){
     mysubjects.test[[i]] = mysubjects[-trainers]   
     
     if (!is.null(covars)) 
-      y.test = y - predict(model$preprocessing[[i]]$mycovarmod, covars)
+      y.test = y - predict(preprocessing$mycovarmod, covars)
     else y.test = y
     y.test[trainers] = NA
     
-    mu = model$preprocessing[[i]]$mu
-    sigma = model$preprocessing[[i]]$sigma
+    mu = preprocessing$mu
+    sigma = preprocessing$sigma
     
     for (j in seq(ncol(X))){
       X.test[, j] = (X.test[, j] - mu[j])/sigma[j]     
     }
     
-    y.pred.perm = matrix(NA, nrow(X), ncol(model$coefs.perm[, , i]))
+    y.pred.perm = matrix(NA, nrow(X), ncol(coefs.perm))
     y.pred.perm[-trainers, ] = 
-      X.test %*% model$coefs.perm[, , i] + model$offset[i] 
+      X.test %*% coefs.perm + model$offset[i] 
     y.test.mat = cbind(y.test.mat, y.test)
     y.pred.mat = abind(y.pred.mat, y.pred.perm, along = 3)
     
