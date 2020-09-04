@@ -13,28 +13,33 @@ generate_permutation = function(subject, group){
     group_size = table(subject)
     unique_subjects = as.numeric(names(group_size))
     
-    for (g in unique(group_size)){
-
+    for (g in sort(unique(group_size))){
+#print("------------")
+#print(g)
       # shuffle around groups of size g
       mysubjects = unique_subjects[group_size == g]
-      myshuffle = sample(mysubjects, replace = F)
+      if (length(mysubjects) > 1) myshuffle = sample(mysubjects, replace = F)
+      else myshuffle = mysubjects
       
+#      print(mysubjects)
+#      print(myshuffle)
       if (g == 1) {
-        indices = sapply(mysubjects, function(x) which(x == subject))
-        new.indices = sapply(myshuffle, function(x) which(x == subject))
+        indices = sapply(mysubjects, function(x) which(subject == x))
+        new.indices = sapply(myshuffle, function(x) which(subject == x))
         mysample[indices] = new.indices
       } else {
         for (j in seq(length(mysubjects))){
           sub = mysubjects[j]
           newsub = myshuffle[j]
-          indices = which(sub == subject)
-          new.indices = which(newsub == subject)
+          indices = which(subject == sub)
+          new.indices = which(subject == newsub)
+# cat("indices", indices, "\n")
           mysample[indices] = sample(new.indices, replace = F)
+# cat("new", new.indices, "\n")
         }
       }
     }
   }
-  
   return(mysample)
 }
 
@@ -55,10 +60,18 @@ doperm = function(perm, y.train, X.train, X.test, maxcomp, subject, group,
   
   y.pred.iter = y.train.pred.iter = nfeatures.iter = NULL    
   
-  filtered = apply(X.train[, nonzero], 2, 
-                   function(x) cor.test(y.train[mysample], 
-                                        x)$p.value < filterthr)
-  K.steps = seq(1, min(maxcomp, sum(filtered)))
+  filtered.p = apply(X.train[, nonzero], 2, 
+                     function(x) cor.test(y.train[mysample], 
+                                          x)$p.value)
+  filtered = filtered.p < filterthr
+  if(sum(filtered) < maxcomp) {
+    filtered = nonzero[order(filtered.p)[1:maxcomp]]
+  }
+  #  filtered = apply(X.train[, nonzero], 2, 
+  #                   function(x) cor.test(y.train[mysample], 
+  #                                        x)$p.value < filterthr)
+  #  K.steps = seq(1, min(maxcomp, sum(filtered)))
+  K.steps = seq(maxcomp)
   
   mycv <- cv.spls( X.train[, nonzero][, filtered], y.train[mysample], 
                    eta = eta.steps, K = K.steps, plot.it = F, scale.x = F )
@@ -75,13 +88,14 @@ doperm = function(perm, y.train, X.train, X.test, maxcomp, subject, group,
       y.train.sample = y.train[mysample][mysample.b]
       
       # feature selection
-      filtered = apply(X.train.sample, 2, 
-                       function(x) cor.test(y.train.sample, 
-                                            x)$p.value < filterthr)
-      
-      if(sum(filtered) < 3) {
-        filtered = nonzero[nonzero]
+      filtered.p = apply(X.train.sample, 2, 
+                         function(x) cor.test(y.train.sample, 
+                                              x)$p.value)
+      filtered = filtered.p < filterthr
+      if(sum(filtered) < maxcomp) {
+        filtered = nonzero[order(filtered.p)[1:maxcomp]]
       }
+      
       K.opt = min(mycv$K.opt, sum(filtered))
       mypls <- spls( X.train.sample[, filtered], 
                      y.train.sample, 
@@ -118,12 +132,12 @@ doperm = function(perm, y.train, X.train, X.test, maxcomp, subject, group,
     y.train.sample = y.train[mysample]
     
     # feature selection
-    filtered = apply(X.train.sample, 2, 
-                     function(x) cor.test(y.train.sample, 
-                                          x)$p.value < filterthr)
-    
-    if(sum(filtered) < 3) {
-      filtered = nonzero[nonzero]
+    filtered.p = apply(X.train.sample, 2, 
+                       function(x) cor.test(y.train.sample, 
+                                            x)$p.value)
+    filtered = filtered.p < filterthr
+    if(sum(filtered) < maxcomp) {
+      filtered = nonzero[order(filtered.p)[1:maxcomp]]
     }
     
     K.opt = min(mycv$K.opt, sum(filtered))
@@ -184,7 +198,7 @@ do_crossvalidate_spls_covars_perm_par = function(fold_index, input,
   if (!is.null(group)) group = input$group[-fold]
   
   nonzero = apply(X, 2, sd) > 0
-
+  
   X.train = as.matrix(X[-fold, , drop=FALSE])
   X.test = as.matrix(X[fold, , drop=FALSE])
   
@@ -218,7 +232,7 @@ do_crossvalidate_spls_covars_perm_par = function(fold_index, input,
                          .export=c('doperm', 'generate_permutation')) %dopar% 
     doperm(perm, y.train, X.train, X.test, maxcomp, subject, group, 
            filterthr, nonzero, NITER)
-
+  
   # collect results
   y.pred.perm = sapply(results_list, function(x) x$y.pred.perm)
   y.train.pred.perm = sapply(results_list, function(x) x$y.train.pred.perm)
@@ -240,11 +254,11 @@ do_crossvalidate_spls_covars_perm_par = function(fold_index, input,
   # save these to disk to spare memory
   if ( savecoefs != '') {
     coefs.perm.file = tempfile(pattern = paste0("coefs-", fold_index, "-"), 
-                                       tmpdir = savecoefs, fileext = ".rda") 
+                               tmpdir = savecoefs, fileext = ".rda") 
     save(coefs.perm, file = coefs.perm.file) 
     
     preprocessing.file = tempfile(pattern = paste0("preproc-", fold_index, "-"), 
-                                          tmpdir = savecoefs, fileext = ".rda")
+                                  tmpdir = savecoefs, fileext = ".rda")
     save(preprocessing, file = preprocessing.file) 
   } else {
     preprocessing.file = ''

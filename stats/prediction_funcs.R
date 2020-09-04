@@ -16,11 +16,6 @@ mypackages = c("mclust", "pryr", "spls", "foreach", "doParallel", "doMC", "caret
                "dplyr", "RColorBrewer", "scales", "rlist", "abind", "psych")
 lapply(mypackages, function (x) if (!require(x, character.only = T)) install.packages(x) else print(paste(x, "already installed!")))
 
-#library(scales)
-#library(RVAideMemoire)
-#library(psychometric)
-#library(boot)
-#library(rjson)
 
 FOLDSEED = sample(seq(10000), 1)
 MYPALETTE=brewer.pal(11, "Spectral")[seq(11, 1, -1)]
@@ -55,7 +50,7 @@ do_predictions_loop = function(OUTPUT_DIR,
                                mymodels = NULL, 
                                savecoefs = F)
 {
-
+  
   RESULTS_DIR = file.path(OUTPUT_DIR, paste0(DIR_PREFFIX, var))
   dir.create(RESULTS_DIR)
   RESULTS_FILE = file.path(RESULTS_DIR, "data.RData")
@@ -83,7 +78,7 @@ do_predictions_loop = function(OUTPUT_DIR,
                                  NPERM = NPERM,
                                  mymodel = mymodel,
                                  savecoefs = ifelse(savecoefs, RESULTS_DIR, '')
-)
+    )
     # View(results)
     print(paste("Done", i/length(to_select_list)*100, "%"))
     
@@ -103,7 +98,7 @@ do_predictions_loop = function(OUTPUT_DIR,
     )
   }
   save(results.df, results, file = RESULTS_FILE)
-
+  
   return(results)
 }
 
@@ -156,7 +151,7 @@ do_prediction = function(DIR_ICA_ME, # working dir
   dvars = read.table(FILE_DVARS)
   ica_data = read.table(FILE_ICA_ME, sep = SEPARATOR, head=F)
   subjects = as.numeric(read.table(FILE_SUBJECTS))
-
+  
   # sync data and covariates
   if (longformat){  
     fd = cbind(fd[c(1, 2)], rowMeans(fd[-c(1, 2, 3)]))
@@ -203,7 +198,7 @@ do_prediction = function(DIR_ICA_ME, # working dir
       return(results)
     }
   } 
-
+  
   mydata$age = unlist(mydata[age_var])
   
   # add higher order terms and interactions
@@ -217,7 +212,7 @@ do_prediction = function(DIR_ICA_ME, # working dir
     mydata[c(var, unique(c(mycovars, "age", "sex.num")))]   
   ) 
   mydata.exp$Subject = mydata$Subject
-
+  
   print(dim(mydata))
   
   if (longformat) mydata.exp$group = mydata$group
@@ -231,7 +226,7 @@ do_prediction = function(DIR_ICA_ME, # working dir
     mydata.exp = subset(mydata.exp, fd <= fdfiltering)
   }
   
-
+  
   y = unlist(mydata.exp[var])
   
   #remove outliers if any
@@ -264,7 +259,7 @@ do_prediction = function(DIR_ICA_ME, # working dir
   }
   else folds = multiFolds(y, k = N_FOLDS, times = N_REPS) 
   #createFolds(y, k = N_FOLDS)
-
+  
   mysubjects = mydata.exp$Subject[valid.rows]
   mygroup = mydata.exp$group[valid.rows]
   
@@ -281,13 +276,14 @@ do_prediction = function(DIR_ICA_ME, # working dir
                                                  folds = folds, 
                                                  subject = mysubjects,
                                                  group = mygroup), 
-                                            maxcomp = maxcomp, cluster = cl, 
+                                            maxcomp = maxcomp, 
+                                            cluster = cl, 
                                             NITER = NITER, 
                                             NPERM = NPERM, 
                                             savecoefs = savecoefs)
     
     stopCluster(cl)
-
+    
     # collect results
     results$N_REPS = N_REPS
     results$projected = F  
@@ -316,22 +312,7 @@ do_prediction = function(DIR_ICA_ME, # working dir
     results$coefs.perm.files =  lapply(cv, 
                                        function(x) x$coefs.perm.file)  
     results$preprocessing.files =  lapply(cv, 
-                                       function(x) x$preprocessing.file)  
-    # browser()
-
-    # save these to disk to spare memory
-    # if ( savecoefs != '') {
-    # coefs.perm = do.call("abind", 
-    #                      list(lapply(cv, function(x){x$coefs.perm}), along = 3))
-    # results$coefs.perm.file = tempfile(pattern = "coefs", 
-    #                                    tmpdir = savecoefs, fileext = ".rda") 
-    # save(coefs.perm, file = results$coefs.perm.file) 
-    # 
-    # results$preprocessing.file = tempfile(pattern = "preproc", 
-    #                                       tmpdir = savecoefs, fileext = ".rda")
-    # preprocessing = lapply(cv, function(x) x$preprocessing) 
-    # save(preprocessing, file = results$preprocessing.file) 
-    # }
+                                          function(x) x$preprocessing.file)  
     
   } else{
     
@@ -342,15 +323,9 @@ do_prediction = function(DIR_ICA_ME, # working dir
     results$eta.iter = mymodel$eta.iter  
     results$K.iter = mymodel$K.iter
     
-    # load(mymodel$coefs.perm.file)
-    # mymodel$coefs.perm = coefs.perm
-    # 
-    # load(mymodel$preprocessing.file)
-    # mymodel$preprocessing = preprocessing
-     
     results$coefs.mean = mymodel$coefs.mean
     results$coefs.stable = mymodel$coefs.stable
-
+    
     results.fit = apply_model(ica_data, y, covars.exp, mymodel, 
                               mysubjects, N_REPS, N_FOLDS)
     results$fold = results.fit$fold
@@ -359,9 +334,9 @@ do_prediction = function(DIR_ICA_ME, # working dir
     results$y.test.orig = results.fit$y.test.orig
     results$y.pred.perm = results.fit$y.pred.perm
     results$y.pred = results.fit$y.pred.perm[, 1]
-
+    
   }
-
+  
   results$covars.exp = covars.exp
   results$demo.orig = mydata.exp[valid.rows, c("age", "sex.num")]
   results$demo = results$demo.orig[results$fold, ]
@@ -370,7 +345,7 @@ do_prediction = function(DIR_ICA_ME, # working dir
   results$Subject = mysubjects[results$fold]
   
   if (longformat) results$group = mydata.exp$group
-
+  
   results$cor.test = results.R2.test = results$cor.test.approx = NULL
   results$nobs = nrow(ica_data)
   
@@ -380,7 +355,7 @@ do_prediction = function(DIR_ICA_ME, # working dir
   for (k in seq(N_REPS)){
     cor.perm = 
       rbind(cor.perm, apply(results$y.pred.perm[myrep == k, ], 2, 
-      function(x) cor.test(x, results$y.test[myrep == k])$estimate))
+                            function(x) cor.test(x, results$y.test[myrep == k])$estimate))
   }
   
   results$cor.test$perm = fisherz2r(colMeans(fisherz(cor.perm)))
@@ -412,12 +387,12 @@ do_prediction = function(DIR_ICA_ME, # working dir
     sum(results$R2.test$perm[1] <= 
           results$R2.test$perm)/length(results$R2.test$perm)
   
-  print(paste0("Estimate:", results$cor.test$estimate, ",  
-               exact p: ", results$cor.test$p.value, ", 
-               approx p: ",  results$cor.test$p.value.approx))
-
+  print(paste0("Estimate:", results$cor.test$estimate, 
+               ", exact p: ", results$cor.test$p.value, 
+               ", approx p: ",  results$cor.test$p.value.approx))
+  
   results$time = toc()
-
+  
   print(paste0("Memory used:", mem_used()/10^9, " Gb"))
   print(paste0("Tempdir:", tempdir()))
   return(results)
