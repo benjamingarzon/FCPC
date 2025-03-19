@@ -1,5 +1,7 @@
 
-Scripts for connectivity analysis for "A generic decision-making ability predicts psychopathology in adolescents and young adults and is reflected in brain connectivity patterns that are distinct from general intelligence" (Michael Moutoussis and Benjamín Garzón, Sharon Neufeld, Dominik R. Bach, Francesco Rigoli, NSPN Consortium, Marc Guitart-Masip and Raymond J. Dolan)
+Scripts for connectivity analysis for **"Decision-making ability, psychopathology, and brain connectivity"** (Michael Moutoussis and Benjamín Garzón, Sharon Neufeld, Dominik R. Bach, Francesco Rigoli, Ian Goodyer, Edward Bullmore, NSPN Consortium, Marc Guitart-Masip and Raymond J. Dolan) 
+
+DOI: 10.1016/j.neuron.2021.04.019
 
 
 ## Data processing
